@@ -1,0 +1,7353 @@
+import { useState, useEffect, useRef, useCallback } from "react";
+
+// ── DATE HELPERS ─────────────────────────────────────────────────────────────
+import { jsxDEV as _jsxDEV, Fragment as _Fragment } from "react/jsx-dev-runtime";
+const TODAY = new Date();
+TODAY.setHours(0, 0, 0, 0);
+const LOGO_B64 = "./logo.png";
+function addDays(d, n) {
+  const r = new Date(d);
+  r.setDate(r.getDate() + n);
+  return r.toISOString().split('T')[0];
+}
+function parseD(s) {
+  if (!s) return null;
+  const d = new Date(s + 'T00:00:00');
+  return isNaN(d) ? null : d;
+}
+function fmtD(s) {
+  if (!s) return '';
+  const d = parseD(s);
+  if (!d) return '';
+  return d.toLocaleDateString('es-AR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+}
+function fmtDt(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  return d.toLocaleDateString('es-AR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  }) + " " + d.toLocaleTimeString('es-AR', {
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+function isOverdue(t) {
+  if (t.done || !t.dueDate) return false;
+  return parseD(t.dueDate) < TODAY;
+}
+function isDueSoon(t) {
+  if (t.done || !t.dueDate) return false;
+  const d = parseD(t.dueDate);
+  if (!d) return false;
+  const diff = (d - TODAY) / (1000 * 60 * 60 * 24);
+  return diff >= 0 && diff <= 3;
+}
+
+// ── DEFAULT DATA ──────────────────────────────────────────────────────────────
+const DEF_MODS = [{
+  id: "onboarding",
+  name: "Onboarding",
+  icon: "⛺",
+  active: true,
+  color: "#4ECDC4",
+  phase: "Campamento Base",
+  tasks: [{
+    id: "ob1",
+    label: "Bienvenida y recorrido",
+    done: false,
+    xp: 50,
+    dueDate: addDays(TODAY, 2),
+    minutes: [],
+    comments: []
+  }, {
+    id: "ob2",
+    label: "Configurar accesos",
+    done: false,
+    xp: 50,
+    dueDate: addDays(TODAY, 5),
+    minutes: [],
+    comments: []
+  }, {
+    id: "ob3",
+    label: "Reunión con el equipo",
+    done: false,
+    xp: 75,
+    dueDate: addDays(TODAY, 7),
+    minutes: [],
+    comments: []
+  }, {
+    id: "ob4",
+    label: "Entrega de materiales",
+    done: false,
+    xp: 50,
+    dueDate: addDays(TODAY, 10),
+    minutes: [],
+    comments: []
+  }, {
+    id: "ob5",
+    label: "Primera semana",
+    done: false,
+    xp: 100,
+    dueDate: addDays(TODAY, 14),
+    minutes: [],
+    comments: []
+  }]
+}, {
+  id: "carrera",
+  name: "Plan de Carrera",
+  icon: "🏠",
+  active: true,
+  color: "#FFD700",
+  phase: "Barrio Residencial",
+  tasks: [{
+    id: "ca1",
+    label: "Definición de rol",
+    done: false,
+    xp: 80,
+    dueDate: addDays(TODAY, -3),
+    minutes: [],
+    comments: []
+  }, {
+    id: "ca2",
+    label: "Objetivos del período",
+    done: false,
+    xp: 80,
+    dueDate: addDays(TODAY, 8),
+    minutes: [],
+    comments: []
+  }, {
+    id: "ca3",
+    label: "Mapa de competencias",
+    done: false,
+    xp: 100,
+    dueDate: addDays(TODAY, 20),
+    minutes: [],
+    comments: []
+  }, {
+    id: "ca4",
+    label: "Plan de desarrollo",
+    done: false,
+    xp: 120,
+    dueDate: addDays(TODAY, 30),
+    minutes: [],
+    comments: []
+  }]
+}, {
+  id: "capacitacion",
+  name: "Capacitación",
+  icon: "🏫",
+  active: true,
+  color: "#C77DFF",
+  phase: "Distrito Educativo",
+  tasks: [{
+    id: "cp1",
+    label: "Diagnóstico de necesidades",
+    done: false,
+    xp: 60,
+    dueDate: addDays(TODAY, 5),
+    minutes: [],
+    comments: []
+  }, {
+    id: "cp2",
+    label: "Cursos completados",
+    done: false,
+    xp: 100,
+    dueDate: addDays(TODAY, 25),
+    minutes: [],
+    comments: []
+  }, {
+    id: "cp3",
+    label: "Certificación obtenida",
+    done: false,
+    xp: 150,
+    dueDate: addDays(TODAY, 45),
+    minutes: [],
+    comments: []
+  }, {
+    id: "cp4",
+    label: "Transferencia al puesto",
+    done: false,
+    xp: 80,
+    dueDate: addDays(TODAY, 60),
+    minutes: [],
+    comments: []
+  }]
+}, {
+  id: "evaluacion",
+  name: "Evaluación",
+  icon: "🏢",
+  active: true,
+  color: "#FF6B35",
+  phase: "Centro Comercial",
+  tasks: [{
+    id: "ev1",
+    label: "Autoevaluación",
+    done: false,
+    xp: 80,
+    dueDate: addDays(TODAY, 12),
+    minutes: [],
+    comments: []
+  }, {
+    id: "ev2",
+    label: "Evaluación del líder",
+    done: false,
+    xp: 80,
+    dueDate: addDays(TODAY, 18),
+    minutes: [],
+    comments: []
+  }, {
+    id: "ev3",
+    label: "Feedback 360",
+    done: false,
+    xp: 100,
+    dueDate: addDays(TODAY, 25),
+    minutes: [],
+    comments: []
+  }, {
+    id: "ev4",
+    label: "Reunión de cierre",
+    done: false,
+    xp: 120,
+    dueDate: addDays(TODAY, 35),
+    minutes: [],
+    comments: []
+  }]
+}, {
+  id: "mentorias",
+  name: "Mentorías",
+  icon: "📚",
+  active: false,
+  color: "#A8E6CF",
+  phase: "Biblioteca",
+  tasks: [{
+    id: "me1",
+    label: "Asignación mentor-mentee",
+    done: false,
+    xp: 60,
+    dueDate: null,
+    minutes: [],
+    comments: []
+  }, {
+    id: "me2",
+    label: "Primer encuentro",
+    done: false,
+    xp: 80,
+    dueDate: null,
+    minutes: [],
+    comments: []
+  }, {
+    id: "me3",
+    label: "Seguimiento x3",
+    done: false,
+    xp: 120,
+    dueDate: null,
+    minutes: [],
+    comments: []
+  }, {
+    id: "me4",
+    label: "Cierre del programa",
+    done: false,
+    xp: 100,
+    dueDate: null,
+    minutes: [],
+    comments: []
+  }]
+}, {
+  id: "bienestar",
+  name: "Bienestar",
+  icon: "🌳",
+  active: false,
+  color: "#52B788",
+  phase: "Parque Central",
+  tasks: [{
+    id: "bi1",
+    label: "Encuesta de clima",
+    done: false,
+    xp: 60,
+    dueDate: null,
+    minutes: [],
+    comments: []
+  }, {
+    id: "bi2",
+    label: "Plan de beneficios",
+    done: false,
+    xp: 70,
+    dueDate: null,
+    minutes: [],
+    comments: []
+  }, {
+    id: "bi3",
+    label: "Actividad de equipo",
+    done: false,
+    xp: 100,
+    dueDate: null,
+    minutes: [],
+    comments: []
+  }]
+}, {
+  id: "sucesion",
+  name: "Sucesión",
+  icon: "🏛️",
+  active: false,
+  color: "#FF6B35",
+  phase: "Palacio Municipal",
+  tasks: [{
+    id: "su1",
+    label: "Puestos clave",
+    done: false,
+    xp: 100,
+    dueDate: null,
+    minutes: [],
+    comments: []
+  }, {
+    id: "su2",
+    label: "Mapeo sucesores",
+    done: false,
+    xp: 120,
+    dueDate: null,
+    minutes: [],
+    comments: []
+  }, {
+    id: "su3",
+    label: "Plan aceleración",
+    done: false,
+    xp: 140,
+    dueDate: null,
+    minutes: [],
+    comments: []
+  }, {
+    id: "su4",
+    label: "Review directivos",
+    done: false,
+    xp: 100,
+    dueDate: null,
+    minutes: [],
+    comments: []
+  }]
+}, {
+  id: "feedback",
+  name: "Cultura Feedback",
+  icon: "💬",
+  active: false,
+  color: "#4488FF",
+  phase: "Plaza Pública",
+  tasks: [{
+    id: "fe1",
+    label: "Taller de feedback",
+    done: false,
+    xp: 80,
+    dueDate: null,
+    minutes: [],
+    comments: []
+  }, {
+    id: "fe2",
+    label: "Ciclo de check-ins",
+    done: false,
+    xp: 80,
+    dueDate: null,
+    minutes: [],
+    comments: []
+  }, {
+    id: "fe3",
+    label: "Dashboard activo",
+    done: false,
+    xp: 100,
+    dueDate: null,
+    minutes: [],
+    comments: []
+  }]
+}];
+const DEF_TEAM = [{
+  id: "u1",
+  name: "Valentina Ríos",
+  role: "Product Lead",
+  emoji: "👩‍💻",
+  level: 8,
+  xp: 4100,
+  skills: ["Liderazgo", "UX"],
+  status: "active",
+  email: "",
+  pin: "1234"
+}, {
+  id: "u2",
+  name: "Martín Fuentes",
+  role: "Ing. Full Stack",
+  emoji: "👨‍🔬",
+  level: 6,
+  xp: 2900,
+  skills: ["React", "Python"],
+  status: "away",
+  email: "",
+  pin: "1234"
+}, {
+  id: "u3",
+  name: "Lucía Benítez",
+  role: "Data Lead",
+  emoji: "🧠",
+  level: 10,
+  xp: 5500,
+  skills: ["ML", "SQL"],
+  status: "busy",
+  email: "",
+  pin: "1234"
+}];
+const EMOJIS = ["👩‍💻", "👨‍💼", "🧠", "👩‍🔬", "👨‍🎨", "👩‍🏫", "🦸", "🧑‍🚀", "👩‍🔧", "🧑‍💻", "🎯", "⚡", "🦊", "🐉", "🌟"];
+const SCOL = {
+  active: "#A8E6CF",
+  away: "#FFD700",
+  busy: "#FF4757"
+};
+async function loadSaved() {
+  try {
+    const r = await window.storage.get("tc-v7");
+    if (r && r.value) {
+      const d = JSON.parse(r.value);
+      if (d.modules && d.team) return d;
+    }
+  } catch (e) {}
+  return null;
+}
+async function persist(s) {
+  try {
+    await window.storage.set("tc-v7", JSON.stringify({
+      ...s,
+      ts: Date.now()
+    }));
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+// ── WEATHER ENGINE ────────────────────────────────────────────────────────────
+// Deterministic pseudo-random weather based on date
+function getDailyWeather() {
+  const d = new Date();
+  const seed = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+  const r = n => {
+    let x = Math.sin(seed * 9301 + n * 49297 + 233) * 233280;
+    return x - Math.floor(x);
+  };
+  const types = ["clear", "clouds", "rain", "wind", "cloudy"];
+  return types[Math.floor(r(1) * types.length)];
+}
+
+// ── CITY CANVAS ───────────────────────────────────────────────────────────────
+function CityCanvas({
+  modules,
+  team,
+  dayMode
+}) {
+  const ref = useRef(null),
+    tickRef = useRef(0),
+    rafRef = useRef(null);
+  const activeMods = modules.filter(m => m.active);
+  const doneKey = activeMods.map(m => m.tasks.filter(t => t.done).length).join(",");
+  const overdueKey = activeMods.map(m => m.tasks.filter(t => isOverdue(t)).length).join(",");
+  const weather = getDailyWeather();
+  useEffect(() => {
+    const cv = ref.current;
+    if (!cv) return;
+    const ctx = cv.getContext("2d");
+    const W = cv.width,
+      H = cv.height;
+    // Weather particles: clouds, rain drops, wind lines
+    const particles = [];
+    if (weather === "rain" || weather === "cloudy" || weather === "clouds") {
+      for (let i = 0; i < 6; i++) particles.push({
+        type: "cloud",
+        x: (i * 160 + Math.random() * 60) % W,
+        y: 10 + Math.random() * 40,
+        w: 60 + Math.random() * 80,
+        speed: .3 + Math.random() * .4,
+        alpha: .7 + Math.random() * .3
+      });
+    }
+    if (weather === "rain") {
+      for (let i = 0; i < 40; i++) particles.push({
+        type: "rain",
+        x: Math.random() * W,
+        y: Math.random() * H,
+        speed: 6 + Math.random() * 4,
+        angle: 0.2
+      });
+    }
+    if (weather === "wind") {
+      for (let i = 0; i < 8; i++) particles.push({
+        type: "cloud",
+        x: i * 120 % W,
+        y: 5 + Math.random() * 50,
+        w: 40 + Math.random() * 60,
+        speed: 1.2 + Math.random() * .8,
+        alpha: .5 + Math.random() * .3
+      });
+      for (let i = 0; i < 12; i++) particles.push({
+        type: "wind",
+        x: Math.random() * W,
+        y: 20 + Math.random() * 160,
+        len: 30 + Math.random() * 50,
+        speed: 3 + Math.random() * 3,
+        alpha: .2 + Math.random() * .3
+      });
+    }
+    if (weather === "clear" && dayMode) {
+      // Sunshine rays
+      for (let i = 0; i < 6; i++) particles.push({
+        type: "ray",
+        angle: i / 6 * Math.PI * 2,
+        phase: Math.random() * Math.PI * 2
+      });
+    }
+    function fr(x, y, w, h, c) {
+      ctx.fillStyle = c;
+      ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
+    }
+    function pct(m) {
+      return m.tasks.length ? m.tasks.filter(t => t.done).length / m.tasks.length : 0;
+    }
+    function drawCloud(x, y, w, alpha) {
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = dayMode ? "#e2e8f0" : "#8899AA";
+      const h2 = w * 0.38;
+      ctx.beginPath();
+      ctx.ellipse(x + w * .5, y + h2 * .6, w * .38, h2 * .55, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(x + w * .28, y + h2 * .75, w * .26, h2 * .42, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(x + w * .72, y + h2 * .75, w * .24, h2 * .38, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.rect(x, y + h2 * .55, w, h2 * .5);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    function drawTent(x, g, col, p, lit) {
+      const s = p === 0 ? 0 : p < .25 ? 1 : p < .5 ? 2 : p < .75 ? 3 : p < 1 ? 4 : 5;
+      if (!s) return;
+      const cx = x + 40;
+      if (s >= 1) {
+        fr(x + 10, g - 8, 60, 8, col + "33");
+        fr(x + 15, g - 18, 4, 10, dayMode ? "#5C6B7A" : "#2A3F58");
+        fr(x + 55, g - 18, 4, 10, dayMode ? "#5C6B7A" : "#2A3F58");
+        fr(x + 35, g - 22, 4, 14, dayMode ? "#5C6B7A" : "#2A3F58");
+      }
+      if (s >= 2) {
+        ctx.fillStyle = col + "44";
+        ctx.beginPath();
+        ctx.moveTo(cx, g - 55);
+        ctx.lineTo(x + 5, g - 5);
+        ctx.lineTo(x + 75, g - 5);
+        ctx.closePath();
+        ctx.fill();
+      }
+      if (s >= 3) {
+        ctx.fillStyle = col + "88";
+        ctx.beginPath();
+        ctx.moveTo(cx, g - 58);
+        ctx.lineTo(x + 8, g - 6);
+        ctx.lineTo(x + 72, g - 6);
+        ctx.closePath();
+        ctx.fill();
+      }
+      if (s >= 4) {
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        ctx.moveTo(cx, g - 62);
+        ctx.lineTo(x + 6, g - 6);
+        ctx.lineTo(x + 74, g - 6);
+        ctx.closePath();
+        ctx.fill();
+        fr(cx - 1, g - 68, 2, 8, "#E8EDF2");
+        fr(cx - 3, g - 70, 6, 4, col);
+      }
+      if (s === 5) {
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        ctx.moveTo(cx, g - 62);
+        ctx.lineTo(x + 6, g - 6);
+        ctx.lineTo(x + 74, g - 6);
+        ctx.closePath();
+        ctx.fill();
+        fr(cx - 1, g - 70, 2, 10, "#E8EDF2");
+        ctx.fillStyle = "#FF6B35";
+        fr(cx, g - 78, 12, 8);
+      }
+    }
+    function drawHouse(x, g, col, p, lit) {
+      const s = p === 0 ? 0 : p < .25 ? 1 : p < .5 ? 2 : p < .75 ? 3 : p < 1 ? 4 : 5;
+      if (!s) return;
+      const wallC = dayMode ? col + "CC" : col;
+      const roofC = dayMode ? col : col;
+      if (s >= 1) fr(x + 5, g - 12, 70, 12, dayMode ? "#8B9DAE" : "#1A2840");
+      if (s >= 3) {
+        fr(x + 8, g - 50, 64, 38, wallC + "77");
+        ctx.fillStyle = roofC + "66";
+        ctx.beginPath();
+        ctx.moveTo(x + 3, g - 50);
+        ctx.lineTo(x + 40, g - 80);
+        ctx.lineTo(x + 77, g - 50);
+        ctx.closePath();
+        ctx.fill();
+      }
+      if (s === 5) {
+        fr(x + 8, g - 52, 64, 40, wallC);
+        ctx.fillStyle = roofC;
+        ctx.beginPath();
+        ctx.moveTo(x + 2, g - 52);
+        ctx.lineTo(x + 40, g - 86);
+        ctx.lineTo(x + 78, g - 52);
+        ctx.closePath();
+        ctx.fill();
+        fr(x + 19, g - 50, 16, 24, dayMode ? "#1a3a5c" : "#0D1117");
+        ctx.fillStyle = lit ? dayMode ? "#FFF9C4" : "#FFD700BB" : dayMode ? "#b0c4d8" : "#1A2840";
+        ctx.fillRect(x + 21, g - 48, 12, 20);
+        fr(x + 33, g - 60, 8, 4, col);
+      }
+    }
+    function drawSchool(x, g, col, p, lit) {
+      const s = p === 0 ? 0 : p < .25 ? 1 : p < .5 ? 2 : p < .75 ? 3 : p < 1 ? 4 : 5;
+      if (!s) return;
+      if (s >= 3) fr(x + 5, g - 60, 70, 46, dayMode ? col + "99" : col + "66");
+      if (s === 5) {
+        fr(x + 5, g - 64, 70, 50, dayMode ? col + "CC" : col);
+        fr(x + 36, g - 90, 8, 8, col);
+        fr(x + 38, g - 94, 4, 5, dayMode ? "#334455" : "#E8EDF2");
+      }
+    }
+    function drawOffice(x, g, col, p, lit) {
+      const s = p === 0 ? 0 : p < .25 ? 1 : p < .5 ? 2 : p < .75 ? 3 : p < 1 ? 4 : 5;
+      if (!s) return;
+      if (s >= 2) fr(x + 8, g - 75, 64, 59, dayMode ? col + "44" : col + "22");
+      if (s >= 3) fr(x + 8, g - 75, 64, 59, dayMode ? col + "88" : col + "55");
+      if (s >= 4) fr(x + 8, g - 78, 64, 62, dayMode ? col + "BB" : col + "99");
+      if (s === 5) {
+        fr(x + 8, g - 80, 64, 64, dayMode ? col + "EE" : col);
+        fr(x + 38, g - 98, 4, 8, dayMode ? "#334455" : "#E8EDF2");
+      }
+    }
+    function drawLib(x, g, col, p, lit) {
+      const s = p === 0 ? 0 : p < .25 ? 1 : p < .5 ? 2 : p < .75 ? 3 : p < 1 ? 4 : 5;
+      if (!s) return;
+      if (s >= 3) {
+        fr(x + 6, g - 62, 68, 48, dayMode ? col + "88" : col + "66");
+        ctx.fillStyle = dayMode ? col + "55" : col + "33";
+        ctx.beginPath();
+        ctx.arc(x + 40, g - 62, 34, Math.PI, 0);
+        ctx.fill();
+      }
+      if (s === 5) {
+        fr(x + 6, g - 66, 68, 52, dayMode ? col + "EE" : col);
+        fr(x + 35, g - 76, 10, 6, col);
+      }
+    }
+    function drawPark(x, g, col, p, lit) {
+      const s = p === 0 ? 0 : p < .25 ? 1 : p < .5 ? 2 : p < .75 ? 3 : p < 1 ? 4 : 5;
+      if (!s) return;
+      const gc = dayMode ? "#2d8a4e" : col;
+      if (s >= 3) {
+        [[x + 12, g - 70], [x + 55, g - 68]].forEach(([tx, ty]) => {
+          fr(tx + 4, ty + 40, 4, 30, dayMode ? "#5C3A1E" : gc + "AA");
+          ctx.fillStyle = dayMode ? gc + "DD" : gc + "77";
+          ctx.beginPath();
+          ctx.arc(tx + 6, ty + 20, 16, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
+      if (s === 5) {
+        [[x + 12, g - 74], [x + 55, g - 72]].forEach(([tx, ty]) => {
+          fr(tx + 4, ty + 44, 4, 30, dayMode ? "#5C3A1E" : "#5C3A1E");
+          ctx.fillStyle = dayMode ? gc : gc;
+          ctx.beginPath();
+          ctx.arc(tx + 6, ty + 20, 20, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = dayMode ? "#52cc7a" : "#52B788";
+          ctx.beginPath();
+          ctx.arc(tx + 3, ty + 14, 13, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        ctx.fillStyle = gc;
+        ctx.beginPath();
+        ctx.arc(x + 40, g - 20, 10, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    function drawPalace(x, g, col, p, lit) {
+      const s = p === 0 ? 0 : p < .25 ? 1 : p < .5 ? 2 : p < .75 ? 3 : p < 1 ? 4 : 5;
+      if (!s) return;
+      if (s >= 3) fr(x + 6, g - 72, 68, 54, dayMode ? col + "88" : col + "66");
+      if (s >= 4) {
+        fr(x + 6, g - 74, 68, 56, dayMode ? col + "CC" : col + "99");
+      }
+      if (s === 5) {
+        fr(x + 6, g - 76, 68, 60, dayMode ? col + "EE" : col);
+        fr(x + 28, g - 106, 24, 32, col);
+        fr(x + 36, g - 114, 8, 10, dayMode ? "#334455" : "#E8EDF2");
+      }
+    }
+    function drawPlaza(x, g, col, p, lit) {
+      const s = p === 0 ? 0 : p < .25 ? 1 : p < .5 ? 2 : p < .75 ? 3 : p < 1 ? 4 : 5;
+      if (!s) return;
+      if (s >= 4) {
+        [x + 10, x + 30, x + 50, x + 65].forEach(px2 => fr(px2, g - 58, 8, 34, dayMode ? col + "BB" : col + "AA"));
+        fr(x + 3, g - 60, 74, 6, col);
+      }
+      if (s === 5) {
+        [x + 10, x + 30, x + 50, x + 65].forEach(px2 => fr(px2, g - 62, 8, 36, dayMode ? col + "EE" : col));
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        ctx.arc(x + 40, g - 50, 9, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    const DFN = {
+      onboarding: drawTent,
+      carrera: drawHouse,
+      capacitacion: drawSchool,
+      evaluacion: drawOffice,
+      mentorias: drawLib,
+      bienestar: drawPark,
+      sucesion: drawPalace,
+      feedback: drawPlaza
+    };
+    function render() {
+      tickRef.current++;
+      const t = tickRef.current;
+      ctx.clearRect(0, 0, W, H);
+
+      // ── SKY ──
+      const sky = ctx.createLinearGradient(0, 0, 0, H);
+      if (dayMode) {
+        if (weather === "rain" || weather === "cloudy") {
+          sky.addColorStop(0, "#7a9bbf");
+          sky.addColorStop(1, "#a8bfd0");
+        } else {
+          sky.addColorStop(0, "#5ba3d9");
+          sky.addColorStop(.6, "#87ceeb");
+          sky.addColorStop(1, "#b8dff5");
+        }
+      } else {
+        sky.addColorStop(0, "#001a1a");
+        sky.addColorStop(.6, "#002a2a");
+        sky.addColorStop(1, "#003535");
+      }
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, W, H);
+
+      // ── SUN / MOON ──
+      if (dayMode) {
+        // Sun with rays
+        const sx = W - 90,
+          sy = 38,
+          sr = 22;
+        if (weather === "clear" || weather === "wind") {
+          ctx.save();
+          ctx.translate(sx, sy);
+          for (let i = 0; i < 8; i++) {
+            ctx.rotate(Math.PI / 4);
+            const al = 0.4 + 0.3 * Math.sin(t * .04 + i);
+            ctx.strokeStyle = `rgba(255,220,50,${al})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(sr + 3, 0);
+            ctx.lineTo(sr + 10 + Math.sin(t * .05 + i) * 3, 0);
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
+        ctx.fillStyle = "#FFE066";
+        ctx.beginPath();
+        ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#FFCC00";
+        ctx.beginPath();
+        ctx.arc(sx - 3, sy - 3, sr - 4, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // Moon
+        ctx.fillStyle = "#FFF5C0";
+        ctx.beginPath();
+        ctx.arc(W - 80, 32, 19, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#001a1a";
+        ctx.beginPath();
+        ctx.arc(W - 71, 28, 15, 0, Math.PI * 2);
+        ctx.fill();
+        // Stars
+        for (let i = 0; i < 60; i++) {
+          const sx2 = (i * 137 + 11) % W,
+            sy2 = (i * 83 + 5) % (H * .5),
+            al = .15 + .65 * Math.abs(Math.sin(i + t * .012));
+          ctx.fillStyle = `rgba(255,255,255,${al.toFixed(2)})`;
+          ctx.fillRect(sx2, sy2, i % 5 === 0 ? 1.5 : .7, i % 5 === 0 ? 1.5 : .7);
+        }
+      }
+
+      // ── WEATHER PARTICLES ──
+      particles.forEach(p2 => {
+        if (p2.type === "cloud") {
+          p2.x = (p2.x + p2.speed) % (W + p2.w + 20) - p2.w * 0.1;
+          drawCloud(p2.x, p2.y, p2.w, p2.alpha * (0.85 + 0.15 * Math.sin(t * .02 + p2.x)));
+        }
+        if (p2.type === "rain") {
+          p2.x = (p2.x + p2.angle * p2.speed + W) % W;
+          p2.y = (p2.y + p2.speed) % H;
+          ctx.globalAlpha = 0.55;
+          ctx.strokeStyle = dayMode ? "#6699bb" : "#4488aa";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(p2.x, p2.y);
+          ctx.lineTo(p2.x + p2.angle * 6, p2.y + 10);
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
+        if (p2.type === "wind") {
+          p2.x = (p2.x + p2.speed * 2) % (W + p2.len + 20);
+          ctx.globalAlpha = p2.alpha * (0.5 + 0.5 * Math.sin(t * .06 + p2.y));
+          ctx.strokeStyle = dayMode ? "#88aabb" : "#336677";
+          ctx.lineWidth = 1;
+          ctx.setLineDash([p2.len * .4, p2.len * .2, p2.len * .2, p2.len * .2]);
+          ctx.beginPath();
+          ctx.moveTo(p2.x - p2.len, p2.y);
+          ctx.lineTo(p2.x, p2.y);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.globalAlpha = 1;
+        }
+      });
+
+      // ── GROUND ──
+      const ground = H - 28;
+      if (dayMode) {
+        ctx.fillStyle = "#3a7d44";
+        ctx.fillRect(0, ground, W, H - ground);
+        ctx.fillStyle = "#2d6636";
+        ctx.fillRect(0, ground, W, 10);
+        ctx.fillStyle = "#ffffff33";
+        for (let i = 0; i < W; i += 52) ctx.fillRect(i, ground + 4, 24, 2);
+        ctx.fillStyle = "#2d6636";
+        ctx.fillRect(0, ground - 2, W, 2);
+      } else {
+        ctx.fillStyle = "#001a1a";
+        ctx.fillRect(0, ground, W, H - ground);
+        ctx.fillStyle = "#002020";
+        ctx.fillRect(0, ground, W, 14);
+        ctx.fillStyle = "#004949AA";
+        for (let i = 0; i < W; i += 52) ctx.fillRect(i, ground + 6, 24, 2);
+        ctx.fillStyle = "#003535";
+        ctx.fillRect(0, ground - 2, W, 2);
+      }
+
+      // Rain puddle shimmer on ground
+      if (weather === "rain") {
+        for (let i = 0; i < 8; i++) {
+          const px2 = 50 + i * 110 + Math.sin(t * .03 + i) * 10;
+          ctx.globalAlpha = 0.2 + 0.1 * Math.sin(t * .08 + i);
+          ctx.fillStyle = dayMode ? "#aaccee" : "#224466";
+          ctx.beginPath();
+          ctx.ellipse(px2, ground + 8, 18, 4, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+      }
+      if (!activeMods.length) {
+        ctx.font = "9px 'Press Start 2P',monospace";
+        ctx.fillStyle = dayMode ? "#557766" : "#2A3F58";
+        ctx.textAlign = "center";
+        ctx.fillText("ACTIVÁ MÓDULOS PARA CONSTRUIR", W / 2, H / 2);
+        rafRef.current = requestAnimationFrame(render);
+        return;
+      }
+      const margin = 14,
+        slotW = Math.floor((W - margin * 2) / activeMods.length);
+      const lit = dayMode ? true : t % 90 < 72;
+      activeMods.forEach((mod, i) => {
+        const p = pct(mod),
+          bx = margin + i * slotW + Math.floor((slotW - 80) / 2);
+        (DFN[mod.buildingType || mod.id] || drawOffice)(bx, ground, mod.color, p, lit);
+        const od = mod.tasks.filter(t2 => isOverdue(t2)).length;
+        if (od > 0) {
+          ctx.fillStyle = "#FF4757";
+          ctx.beginPath();
+          ctx.arc(bx + 72, ground - 92, 7, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#fff";
+          ctx.font = "bold 8px sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("!", bx + 72, ground - 89);
+        }
+        ctx.font = "5px 'Press Start 2P',monospace";
+        ctx.fillStyle = p > 0 ? mod.color + (dayMode ? "DD" : "BB") : dayMode ? "#446655" : "#2A3F58";
+        ctx.textAlign = "center";
+        ctx.fillText(mod.name.length > 12 ? mod.name.slice(0, 11) + "…" : mod.name, bx + 40, ground + 16);
+        const tot = mod.tasks.length;
+        for (let d = 0; d < tot; d++) {
+          const dx = bx + 40 - tot * 5 + d * 10 + 5;
+          ctx.fillStyle = d < mod.tasks.filter(t2 => t2.done).length ? mod.color : dayMode ? "#99bbaa" : "#2A3F58";
+          ctx.beginPath();
+          ctx.arc(dx, ground + 23, 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      });
+
+      // Citizens
+      const nc = Math.min(team.length, 5);
+      for (let ci = 0; ci < nc; ci++) {
+        const sp = .24 + ci * .08,
+          gx = (t * sp + ci * 180) % (W + 28) - 14;
+        ctx.font = "13px serif";
+        ctx.textAlign = "left";
+        ctx.fillText(team[ci]?.emoji || "🚶", gx, ground + 2);
+      }
+      rafRef.current = requestAnimationFrame(render);
+    }
+    render();
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [activeMods.length, doneKey, overdueKey, team.length, dayMode, weather]);
+  return /*#__PURE__*/_jsxDEV("canvas", {
+    ref: ref,
+    width: 900,
+    height: 220,
+    style: {
+      width: "100%",
+      height: 220,
+      imageRendering: "pixelated",
+      display: "block"
+    }
+  }, void 0, false);
+}
+
+// ── GANTT CANVAS ─────────────────────────────────────────────────────────────
+function GanttCanvas({
+  modules,
+  projStart,
+  projEnd
+}) {
+  const ref = useRef(null);
+  const am = modules.filter(m => m.active);
+  const doneKey = am.map(m => m.tasks.filter(t => t.done).length).join(",");
+  const dateKey = am.map(m => m.tasks.map(t => t.dueDate || "").join("|")).join(";");
+  useEffect(() => {
+    const cv = ref.current;
+    if (!cv) return;
+    const ctx = cv.getContext("2d");
+    const startD = parseD(projStart) || new Date();
+    const endD = parseD(projEnd) || new Date(TODAY.getTime() + 60 * 864e5);
+    const totalDays = Math.max(1, Math.round((endD - startD) / 864e5));
+    const W = 920,
+      rowH = 44,
+      headerH = 48,
+      leftW = 140,
+      padR = 16;
+    const H = headerH + Math.max(am.length, 1) * rowH + 12;
+    cv.width = W;
+    cv.height = H;
+    ctx.clearRect(0, 0, W, H);
+    const chartW = W - leftW - padR;
+    function xOfD(d) {
+      const days = Math.round((d - startD) / 864e5);
+      return leftW + Math.max(0, Math.min(1, days / totalDays)) * chartW;
+    }
+    function xOf(s) {
+      return xOfD(parseD(s) || TODAY);
+    }
+
+    // sky background
+    ctx.fillStyle = "#0D1117";
+    ctx.fillRect(0, 0, W, H);
+
+    // vertical grid lines
+    ctx.strokeStyle = "#1E2D40";
+    ctx.lineWidth = 0.5;
+    const mc = new Date(startD);
+    mc.setDate(1);
+    while (mc <= endD) {
+      const x = xOfD(mc);
+      if (x >= leftW) {
+        ctx.beginPath();
+        ctx.moveTo(x, headerH);
+        ctx.lineTo(x, H);
+        ctx.stroke();
+      }
+      mc.setMonth(mc.getMonth() + 1);
+    }
+
+    // header
+    ctx.fillStyle = "#080C12";
+    ctx.fillRect(0, 0, W, headerH);
+    ctx.fillStyle = "#1A2332";
+    ctx.fillRect(0, 0, leftW, headerH);
+    ctx.font = "10px Inter,sans-serif";
+    ctx.fillStyle = "#7A8FA6";
+    ctx.textAlign = "left";
+    ctx.fillText("MÓDULO", 10, headerH / 2 + 4);
+    ctx.textAlign = "center";
+    const mc2 = new Date(startD);
+    mc2.setDate(1);
+    while (mc2 <= endD) {
+      const x = xOfD(mc2);
+      if (x >= leftW) {
+        ctx.fillStyle = "#4A5E72";
+        ctx.font = "bold 9px Inter,sans-serif";
+        ctx.fillText(mc2.toLocaleDateString('es-AR', {
+          month: 'short'
+        }).toUpperCase(), x + 16, 16);
+        ctx.fillStyle = "#2A3F58";
+        ctx.font = "8px Inter,sans-serif";
+        ctx.fillText("'" + mc2.getFullYear().toString().slice(2), x + 16, 30);
+      }
+      mc2.setMonth(mc2.getMonth() + 1);
+    }
+
+    // empty state
+    if (am.length === 0) {
+      ctx.fillStyle = "#2A3F58";
+      ctx.font = "9px 'Press Start 2P',monospace";
+      ctx.textAlign = "center";
+      ctx.fillText("ACTIVÁ MÓDULOS PARA VER EL GANTT", W / 2, H / 2);
+      return;
+    }
+
+    // rows
+    am.forEach((mod, i) => {
+      const y = headerH + i * rowH;
+      ctx.fillStyle = i % 2 === 0 ? "#0D1117" : "#0F1620";
+      ctx.fillRect(0, y, W, rowH);
+      ctx.fillStyle = "#1A2332";
+      ctx.fillRect(0, y, leftW, rowH);
+      ctx.strokeStyle = "#1E2D40";
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(0, y + rowH);
+      ctx.lineTo(W, y + rowH);
+      ctx.stroke();
+
+      // icon + name
+      ctx.font = "14px serif";
+      ctx.textAlign = "left";
+      ctx.fillText(mod.icon, 6, y + rowH / 2 + 6);
+      ctx.font = "10px Inter,sans-serif";
+      ctx.fillStyle = "#E8EDF2";
+      ctx.textAlign = "left";
+      ctx.fillText(mod.name.length > 14 ? mod.name.slice(0, 13) + "…" : mod.name, 26, y + rowH / 2 + 4);
+
+      // bars
+      const tWD = mod.tasks.filter(t => t.dueDate);
+      const tDates = tWD.map(t => parseD(t.dueDate)).filter(Boolean).sort((a, b) => a - b);
+      const pBarEnd = tDates.length ? tDates[tDates.length - 1] : endD;
+      const xPS = xOfD(startD),
+        xPE = Math.min(W - padR, xOfD(pBarEnd));
+      const barY = y + rowH / 2 - 5;
+
+      // projected bar
+      if (xPE > xPS) {
+        ctx.fillStyle = "#1E2D40";
+        ctx.fillRect(xPS, barY, xPE - xPS, 10);
+        ctx.strokeStyle = "#2A3F58";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(xPS, barY, xPE - xPS, 10);
+      }
+      // progress bar
+      const p = mod.tasks.length ? mod.tasks.filter(t => t.done).length / mod.tasks.length : 0;
+      if (p > 0) {
+        ctx.fillStyle = mod.color + "CC";
+        ctx.fillRect(xPS, barY, (xPE - xPS) * p, 10);
+      }
+
+      // task dots
+      tWD.forEach(t => {
+        const tx = xOf(t.dueDate);
+        if (tx < leftW || tx > W - padR) return;
+        const ov = isOverdue(t),
+          sn = isDueSoon(t);
+        ctx.fillStyle = ov ? "#FF4757" : sn ? "#FFD700" : t.done ? mod.color : "#2A3F58";
+        ctx.strokeStyle = ov ? "#FF4757" : sn ? "#FFD700" : mod.color;
+        ctx.lineWidth = ov || sn ? 1.5 : 1;
+        ctx.beginPath();
+        ctx.arc(tx, y + rowH / 2, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        if (ov) {
+          ctx.fillStyle = "#FF4757";
+          ctx.font = "bold 8px sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("!", tx, y + rowH / 2 + 3);
+        }
+      });
+
+      // % label
+      ctx.font = "bold 8px 'Press Start 2P',monospace";
+      ctx.fillStyle = mod.color;
+      ctx.textAlign = "left";
+      ctx.fillText(Math.round(p * 100) + "%", Math.min(xPE + 6, W - 30), y + rowH / 2 + 4);
+    });
+
+    // today line
+    const todayX = xOfD(TODAY);
+    if (todayX >= leftW && todayX <= W - padR) {
+      ctx.strokeStyle = "#FF4757AA";
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath();
+      ctx.moveTo(todayX, headerH);
+      ctx.lineTo(todayX, H);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = "#FF4757";
+      ctx.font = "bold 8px Inter,sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("HOY", todayX, headerH - 8);
+    }
+  }, [am.length, doneKey, dateKey, projStart, projEnd]);
+  return /*#__PURE__*/_jsxDEV("div", {
+    style: {
+      overflowX: "auto",
+      background: "#0D1117"
+    },
+    children: /*#__PURE__*/_jsxDEV("canvas", {
+      ref: ref,
+      width: 920,
+      height: 200,
+      style: {
+        display: "block"
+      }
+    }, void 0, false)
+  }, void 0, false);
+}
+
+// ── TASK DETAIL MODAL (team & admin) ─────────────────────────────────────────
+function TaskModal({
+  task,
+  mod,
+  session,
+  onClose,
+  onUpdate,
+  adminName
+}) {
+  const [commentText, setCommentText] = useState("");
+  const [hourDate, setHourDate] = useState(TODAY.toISOString().split('T')[0]);
+  const [hourAmount, setHourAmount] = useState("");
+  const [hourNote, setHourNote] = useState("");
+  const px = s => ({
+    fontFamily: "'Press Start 2P',monospace",
+    ...s
+  });
+  const isAdmin = session.role === "admin";
+  const oBadge = {
+    display: "inline-flex",
+    alignItems: "center",
+    background: "#FF475722",
+    border: "1px solid #FF475766",
+    color: "#FF4757",
+    fontFamily: "'Press Start 2P',monospace",
+    fontSize: 5,
+    padding: "2px 5px"
+  };
+  const sBadge = {
+    display: "inline-flex",
+    alignItems: "center",
+    background: "#FFD70022",
+    border: "1px solid #FFD70066",
+    color: "#FFD700",
+    fontFamily: "'Press Start 2P',monospace",
+    fontSize: 5,
+    padding: "2px 5px"
+  };
+  const addComment = () => {
+    if (!commentText.trim()) return;
+    const comment = {
+      id: "c" + Date.now(),
+      text: commentText.trim(),
+      ts: Date.now(),
+      authorId: session.id,
+      authorName: session.name,
+      authorEmoji: session.emoji || "💬"
+    };
+    onUpdate({
+      ...task,
+      comments: [...(task.comments || []), comment]
+    });
+    setCommentText("");
+  };
+  const markMinuteSeen = minuteId => {
+    const updated = (task.minutes || []).map(m => m.id === minuteId ? {
+      ...m,
+      seenBy: [...(m.seenBy || []).filter(x => x.id !== session.id), {
+        id: session.id,
+        name: session.name,
+        ts: Date.now()
+      }]
+    } : m);
+    onUpdate({
+      ...task,
+      minutes: updated
+    });
+  };
+  const deleteComment = cId => {
+    onUpdate({
+      ...task,
+      comments: (task.comments || []).filter(c => c.id !== cId)
+    });
+  };
+  const addHours = () => {
+    const h = parseFloat(hourAmount);
+    if (!h || h <= 0) return;
+    const entry = {
+      id: "h" + Date.now(),
+      date: hourDate,
+      hours: h,
+      note: hourNote.trim(),
+      authorId: session.id,
+      authorName: session.name,
+      authorEmoji: session.emoji || "⏱",
+      authorRole: isAdmin ? "admin" : "team"
+    };
+    onUpdate({
+      ...task,
+      hoursLog: [...(task.hoursLog || []), entry]
+    });
+    setHourAmount("");
+    setHourNote("");
+  };
+  const deleteHours = hId => {
+    const entry = (task.hoursLog || []).find(h => h.id === hId);
+    if (!entry) return;
+    if (!isAdmin && entry.authorId !== session.id) return;
+    onUpdate({
+      ...task,
+      hoursLog: (task.hoursLog || []).filter(h => h.id !== hId)
+    });
+  };
+  const minutes = task.minutes || [];
+  const comments = task.comments || [];
+  const hoursLog = task.hoursLog || [];
+
+  // Visibility: admin sees all, team sees only own
+  const visibleHours = isAdmin ? hoursLog : hoursLog.filter(h => h.authorId === session.id);
+  const adminHours = hoursLog.filter(h => h.authorRole === "admin");
+  const teamHours = hoursLog.filter(h => h.authorRole === "team");
+  const totalAdmin = adminHours.reduce((a, h) => a + h.hours, 0);
+  const totalTeam = teamHours.reduce((a, h) => a + h.hours, 0);
+  const myTotal = visibleHours.reduce((a, h) => a + h.hours, 0);
+  const inp = {
+    background: "#0D1117",
+    border: "1px solid #2A3F58",
+    color: "#E8EDF2",
+    padding: "6px 8px",
+    fontSize: 12,
+    fontFamily: "Inter,sans-serif",
+    outline: "none"
+  };
+  return /*#__PURE__*/_jsxDEV("div", {
+    style: {
+      position: "fixed",
+      top: 0,
+      right: 0,
+      bottom: 0,
+      left: 0,
+      background: "rgba(0,0,0,0.9)",
+      zIndex: 300,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 12
+    },
+    children: /*#__PURE__*/_jsxDEV("div", {
+      style: {
+        background: "#0D1117",
+        border: `1px solid ${mod.color}66`,
+        maxWidth: 600,
+        width: "100%",
+        maxHeight: "94vh",
+        overflow: "auto",
+        boxShadow: `0 0 40px ${mod.color}22`
+      },
+      children: [/*#__PURE__*/_jsxDEV("div", {
+        style: {
+          background: "#080C12",
+          padding: "12px 16px",
+          borderBottom: "1px solid #1E2D40",
+          display: "flex",
+          gap: 10,
+          alignItems: "center",
+          position: "sticky",
+          top: 0,
+          zIndex: 10
+        },
+        children: [/*#__PURE__*/_jsxDEV("span", {
+          style: {
+            fontSize: 20
+          },
+          children: mod.icon
+        }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+          style: {
+            flex: 1
+          },
+          children: [/*#__PURE__*/_jsxDEV("div", {
+            style: {
+              fontWeight: 600,
+              fontSize: 13,
+              marginBottom: 2
+            },
+            children: task.label
+          }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+            style: px({
+              fontSize: 5,
+              color: mod.color
+            }),
+            children: [mod.name, " · ", mod.phase]
+          }, void 0, true)]
+        }, void 0, true), /*#__PURE__*/_jsxDEV("button", {
+          onClick: onClose,
+          style: {
+            background: "none",
+            border: "none",
+            color: "#7A8FA6",
+            cursor: "pointer",
+            fontSize: 20,
+            lineHeight: 1,
+            marginLeft: 8
+          },
+          children: "×"
+        }, void 0, false)]
+      }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+        style: {
+          padding: 16
+        },
+        children: [/*#__PURE__*/_jsxDEV("div", {
+          style: {
+            display: "flex",
+            gap: 8,
+            marginBottom: 16,
+            flexWrap: "wrap",
+            alignItems: "center"
+          },
+          children: [/*#__PURE__*/_jsxDEV("span", {
+            style: {
+              background: task.done ? "#A8E6CF22" : "#FF6B3522",
+              border: `1px solid ${task.done ? "#A8E6CF44" : "#FF6B3544"}`,
+              color: task.done ? "#A8E6CF" : "#FF6B35",
+              fontFamily: "'Press Start 2P',monospace",
+              fontSize: 6,
+              padding: "3px 9px"
+            },
+            children: task.done ? "✓ COMPLETADA" : "EN CURSO"
+          }, void 0, false), task.startDate && /*#__PURE__*/_jsxDEV("span", {
+            style: {
+              fontSize: 10,
+              color: "#7A8FA6"
+            },
+            children: ["📅 ", fmtD(task.startDate)]
+          }, void 0, true), task.dueDate && /*#__PURE__*/_jsxDEV("span", {
+            style: isOverdue(task) ? oBadge : isDueSoon(task) ? sBadge : {
+              fontSize: 11,
+              color: "#7A8FA6"
+            },
+            children: [isOverdue(task) ? "⚠ VENCE " : isDueSoon(task) ? "⏰ VENCE " : "🏁 ", fmtD(task.dueDate), task.duration ? ` · ${task.duration}d` : ""]
+          }, void 0, true), /*#__PURE__*/_jsxDEV("span", {
+            style: px({
+              fontSize: 6,
+              color: "#FFD700",
+              marginLeft: "auto"
+            }),
+            children: ["+", task.xp, " XP"]
+          }, void 0, true)]
+        }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+          style: {
+            marginBottom: 18
+          },
+          children: [/*#__PURE__*/_jsxDEV("div", {
+            style: {
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              marginBottom: 10
+            },
+            children: [/*#__PURE__*/_jsxDEV("div", {
+              style: px({
+                fontSize: 7,
+                color: "#52B788",
+                letterSpacing: 1
+              }),
+              children: "⏱ HORAS TRABAJADAS"
+            }, void 0, false), isAdmin && hoursLog.length > 0 && /*#__PURE__*/_jsxDEV("div", {
+              style: {
+                display: "flex",
+                gap: 6,
+                marginLeft: "auto",
+                flexWrap: "wrap"
+              },
+              children: [totalAdmin > 0 && /*#__PURE__*/_jsxDEV("span", {
+                style: {
+                  fontSize: 10,
+                  background: "#FFD70022",
+                  border: "1px solid #FFD70044",
+                  color: "#FFD700",
+                  padding: "2px 7px",
+                  fontFamily: "'Press Start 2P',monospace",
+                  fontSize: 6
+                },
+                children: ["👑 ", totalAdmin, "h"]
+              }, void 0, true), totalTeam > 0 && /*#__PURE__*/_jsxDEV("span", {
+                style: {
+                  fontSize: 10,
+                  background: "#4ECDC422",
+                  border: "1px solid #4ECDC444",
+                  color: "#4ECDC4",
+                  padding: "2px 7px",
+                  fontFamily: "'Press Start 2P',monospace",
+                  fontSize: 6
+                },
+                children: ["🏙️ ", totalTeam, "h"]
+              }, void 0, true)]
+            }, void 0, true), !isAdmin && myTotal > 0 && /*#__PURE__*/_jsxDEV("span", {
+              style: {
+                fontSize: 10,
+                background: "#4ECDC422",
+                border: "1px solid #4ECDC444",
+                color: "#4ECDC4",
+                padding: "2px 7px",
+                fontFamily: "'Press Start 2P',monospace",
+                fontSize: 6,
+                marginLeft: "auto"
+              },
+              children: ["MIS HORAS: ", myTotal, "h"]
+            }, void 0, true)]
+          }, void 0, true), visibleHours.length === 0 ? /*#__PURE__*/_jsxDEV("div", {
+            style: {
+              color: "#2A3F58",
+              fontSize: 12,
+              padding: "6px 0 10px"
+            },
+            children: "Sin horas registradas aún."
+          }, void 0, false) : /*#__PURE__*/_jsxDEV("div", {
+            style: {
+              display: "flex",
+              flexDirection: "column",
+              gap: 5,
+              marginBottom: 12
+            },
+            children: isAdmin ?
+            // Admin: show two groups
+            ["admin", "team"].map(roleGroup => {
+              const group = hoursLog.filter(h => h.authorRole === roleGroup);
+              if (!group.length) return null;
+              const groupTotal = group.reduce((a, h) => a + h.hours, 0);
+              const groupCol = roleGroup === "admin" ? "#FFD700" : "#4ECDC4";
+              const groupLabel = roleGroup === "admin" ? "👑 EQUIPO ADMIN" : "🏙️ CLIENTES / EQUIPO";
+              return /*#__PURE__*/_jsxDEV("div", {
+                children: [/*#__PURE__*/_jsxDEV("div", {
+                  style: {
+                    fontSize: 10,
+                    color: groupCol,
+                    fontFamily: "'Press Start 2P',monospace",
+                    marginBottom: 5,
+                    display: "flex",
+                    justifyContent: "space-between"
+                  },
+                  children: [/*#__PURE__*/_jsxDEV("span", {
+                    children: groupLabel
+                  }, void 0, false), /*#__PURE__*/_jsxDEV("span", {
+                    children: [groupTotal, "h total"]
+                  }, void 0, true)]
+                }, void 0, true), group.sort((a, b) => a.date.localeCompare(b.date)).map(h => /*#__PURE__*/_jsxDEV("div", {
+                  style: {
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "6px 9px",
+                    background: "#0D1117",
+                    border: `1px solid ${groupCol}22`,
+                    marginBottom: 3
+                  },
+                  children: [/*#__PURE__*/_jsxDEV("span", {
+                    style: {
+                      fontSize: 12,
+                      flexShrink: 0
+                    },
+                    children: h.authorEmoji
+                  }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+                    style: {
+                      flex: 1,
+                      minWidth: 0
+                    },
+                    children: [/*#__PURE__*/_jsxDEV("div", {
+                      style: {
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: "#E8EDF2"
+                      },
+                      children: [h.authorName, " ", /*#__PURE__*/_jsxDEV("span", {
+                        style: {
+                          color: groupCol,
+                          fontFamily: "'Press Start 2P',monospace",
+                          fontSize: 7
+                        },
+                        children: [h.hours, "h"]
+                      }, void 0, true)]
+                    }, void 0, true), h.note && /*#__PURE__*/_jsxDEV("div", {
+                      style: {
+                        fontSize: 11,
+                        color: "#7A8FA6",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap"
+                      },
+                      children: h.note
+                    }, void 0, false)]
+                  }, void 0, true), /*#__PURE__*/_jsxDEV("span", {
+                    style: {
+                      fontSize: 10,
+                      color: "#2A3F58",
+                      whiteSpace: "nowrap",
+                      flexShrink: 0
+                    },
+                    children: fmtD(h.date)
+                  }, void 0, false), /*#__PURE__*/_jsxDEV("button", {
+                    onClick: () => deleteHours(h.id),
+                    style: {
+                      background: "none",
+                      border: "none",
+                      color: "#2A3F5888",
+                      cursor: "pointer",
+                      fontSize: 13,
+                      lineHeight: 1,
+                      flexShrink: 0
+                    },
+                    title: "Eliminar",
+                    children: "×"
+                  }, void 0, false)]
+                }, h.id, true))]
+              }, roleGroup, true);
+            }) :
+            // Team: show only own hours
+            visibleHours.sort((a, b) => a.date.localeCompare(b.date)).map(h => /*#__PURE__*/_jsxDEV("div", {
+              style: {
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "6px 9px",
+                background: "#0D1117",
+                border: "1px solid #4ECDC422",
+                marginBottom: 3
+              },
+              children: [/*#__PURE__*/_jsxDEV("span", {
+                style: {
+                  fontSize: 12
+                },
+                children: h.authorEmoji
+              }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+                style: {
+                  flex: 1,
+                  minWidth: 0
+                },
+                children: [/*#__PURE__*/_jsxDEV("div", {
+                  style: {
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: "#E8EDF2"
+                  },
+                  children: ["Vos ", /*#__PURE__*/_jsxDEV("span", {
+                    style: {
+                      color: "#4ECDC4",
+                      fontFamily: "'Press Start 2P',monospace",
+                      fontSize: 7
+                    },
+                    children: [h.hours, "h"]
+                  }, void 0, true)]
+                }, void 0, true), h.note && /*#__PURE__*/_jsxDEV("div", {
+                  style: {
+                    fontSize: 11,
+                    color: "#7A8FA6"
+                  },
+                  children: h.note
+                }, void 0, false)]
+              }, void 0, true), /*#__PURE__*/_jsxDEV("span", {
+                style: {
+                  fontSize: 10,
+                  color: "#2A3F58",
+                  whiteSpace: "nowrap"
+                },
+                children: fmtD(h.date)
+              }, void 0, false), /*#__PURE__*/_jsxDEV("button", {
+                onClick: () => deleteHours(h.id),
+                style: {
+                  background: "none",
+                  border: "none",
+                  color: "#2A3F5888",
+                  cursor: "pointer",
+                  fontSize: 13,
+                  lineHeight: 1
+                },
+                title: "Eliminar",
+                children: "×"
+              }, void 0, false)]
+            }, h.id, true))
+          }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+            style: {
+              background: "#0A0F18",
+              border: "1px solid #52B78833",
+              padding: 10
+            },
+            children: [/*#__PURE__*/_jsxDEV("div", {
+              style: px({
+                fontSize: 6,
+                color: "#52B788",
+                marginBottom: 8
+              }),
+              children: "+ REGISTRAR HORAS"
+            }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+              style: {
+                display: "grid",
+                gridTemplateColumns: "110px 70px 1fr",
+                gap: 6,
+                marginBottom: 6
+              },
+              children: [/*#__PURE__*/_jsxDEV("div", {
+                children: [/*#__PURE__*/_jsxDEV("div", {
+                  style: {
+                    fontSize: 9,
+                    color: "#7A8FA6",
+                    marginBottom: 3
+                  },
+                  children: "FECHA"
+                }, void 0, false), /*#__PURE__*/_jsxDEV("input", {
+                  type: "date",
+                  value: hourDate,
+                  onChange: e => setHourDate(e.target.value),
+                  style: {
+                    ...inp,
+                    width: "100%",
+                    fontSize: 11
+                  }
+                }, void 0, false)]
+              }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+                children: [/*#__PURE__*/_jsxDEV("div", {
+                  style: {
+                    fontSize: 9,
+                    color: "#7A8FA6",
+                    marginBottom: 3
+                  },
+                  children: "HORAS"
+                }, void 0, false), /*#__PURE__*/_jsxDEV("input", {
+                  type: "number",
+                  min: "0.5",
+                  max: "24",
+                  step: "0.5",
+                  placeholder: "0",
+                  value: hourAmount,
+                  onChange: e => setHourAmount(e.target.value),
+                  onKeyDown: e => e.key === "Enter" && addHours(),
+                  style: {
+                    ...inp,
+                    width: "100%",
+                    textAlign: "center"
+                  }
+                }, void 0, false)]
+              }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+                children: [/*#__PURE__*/_jsxDEV("div", {
+                  style: {
+                    fontSize: 9,
+                    color: "#7A8FA6",
+                    marginBottom: 3
+                  },
+                  children: "NOTA (opcional)"
+                }, void 0, false), /*#__PURE__*/_jsxDEV("input", {
+                  type: "text",
+                  placeholder: "¿En qué trabajaste?",
+                  value: hourNote,
+                  onChange: e => setHourNote(e.target.value),
+                  onKeyDown: e => e.key === "Enter" && addHours(),
+                  style: {
+                    ...inp,
+                    width: "100%"
+                  }
+                }, void 0, false)]
+              }, void 0, true)]
+            }, void 0, true), /*#__PURE__*/_jsxDEV("button", {
+              onClick: addHours,
+              style: {
+                background: hourAmount ? "#52B78822" : "transparent",
+                border: `1px solid ${hourAmount ? "#52B788" : "#2A3F58"}`,
+                color: hourAmount ? "#52B788" : "#2A3F58",
+                fontFamily: "'Press Start 2P',monospace",
+                fontSize: 6,
+                padding: "6px 14px",
+                cursor: "pointer",
+                width: "100%",
+                transition: "all .15s"
+              },
+              children: ["⏱ REGISTRAR ", hourAmount ? `${hourAmount}h` : ""]
+            }, void 0, true)]
+          }, void 0, true)]
+        }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+          style: {
+            marginBottom: 16
+          },
+          children: [/*#__PURE__*/_jsxDEV("div", {
+            style: px({
+              fontSize: 7,
+              color: "#4ECDC4",
+              letterSpacing: 1,
+              marginBottom: 10
+            }),
+            children: ["📋 MINUTAS ", minutes.length > 0 && /*#__PURE__*/_jsxDEV("span", {
+              style: {
+                color: "#7A8FA6"
+              },
+              children: ["(", minutes.length, ")"]
+            }, void 0, true)]
+          }, void 0, true), minutes.length === 0 ? /*#__PURE__*/_jsxDEV("div", {
+            style: {
+              color: "#2A3F58",
+              fontSize: 12,
+              padding: "8px 0"
+            },
+            children: "Sin minutas registradas aún."
+          }, void 0, false) : /*#__PURE__*/_jsxDEV("div", {
+            style: {
+              display: "flex",
+              flexDirection: "column",
+              gap: 8
+            },
+            children: minutes.map(mn => {
+              const seen = (mn.seenBy || []).find(x => x.id === session.id);
+              return /*#__PURE__*/_jsxDEV("div", {
+                style: {
+                  background: "#1A2332",
+                  border: `1px solid ${seen ? "#4ECDC444" : "#2A3F58"}`,
+                  padding: 11
+                },
+                children: [/*#__PURE__*/_jsxDEV("div", {
+                  style: {
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    marginBottom: 7,
+                    gap: 8
+                  },
+                  children: [/*#__PURE__*/_jsxDEV("div", {
+                    children: [/*#__PURE__*/_jsxDEV("div", {
+                      style: {
+                        fontSize: 11,
+                        color: "#E8EDF2",
+                        fontWeight: 600,
+                        marginBottom: 2
+                      },
+                      children: mn.subject || "Minuta"
+                    }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+                      style: {
+                        fontSize: 10,
+                        color: "#7A8FA6"
+                      },
+                      children: [mn.author, " → ", mn.sentTo, " · ", fmtDt(mn.ts)]
+                    }, void 0, true)]
+                  }, void 0, true), seen ? /*#__PURE__*/_jsxDEV("span", {
+                    style: px({
+                      fontSize: 5,
+                      color: "#A8E6CF",
+                      background: "#A8E6CF11",
+                      border: "1px solid #A8E6CF33",
+                      padding: "2px 6px",
+                      whiteSpace: "nowrap"
+                    }),
+                    children: "✓ VISTO"
+                  }, void 0, false) : !isAdmin && /*#__PURE__*/_jsxDEV("button", {
+                    onClick: () => markMinuteSeen(mn.id),
+                    style: {
+                      background: "#4ECDC422",
+                      border: "1px solid #4ECDC4",
+                      color: "#4ECDC4",
+                      fontFamily: "'Press Start 2P',monospace",
+                      fontSize: 5,
+                      padding: "3px 8px",
+                      cursor: "pointer",
+                      whiteSpace: "nowrap"
+                    },
+                    children: "MARCAR VISTO"
+                  }, void 0, false)]
+                }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+                  style: {
+                    fontSize: 12,
+                    color: "#E8EDF2",
+                    whiteSpace: "pre-wrap",
+                    lineHeight: 1.7,
+                    background: "#0D1117",
+                    padding: "8px 10px",
+                    borderLeft: "2px solid #4ECDC4"
+                  },
+                  children: mn.text
+                }, void 0, false), (mn.seenBy || []).length > 0 && /*#__PURE__*/_jsxDEV("div", {
+                  style: {
+                    marginTop: 7,
+                    fontSize: 10,
+                    color: "#7A8FA6",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                    flexWrap: "wrap"
+                  },
+                  children: [/*#__PURE__*/_jsxDEV("span", {
+                    children: "Visto por:"
+                  }, void 0, false), (mn.seenBy || []).map(sv => /*#__PURE__*/_jsxDEV("span", {
+                    style: {
+                      background: "#A8E6CF11",
+                      border: "1px solid #A8E6CF22",
+                      color: "#A8E6CF",
+                      padding: "1px 6px",
+                      fontSize: 10
+                    },
+                    children: sv.name
+                  }, sv.id, false))]
+                }, void 0, true), isAdmin && !(mn.seenBy || []).length && /*#__PURE__*/_jsxDEV("div", {
+                  style: {
+                    marginTop: 5,
+                    fontSize: 10,
+                    color: "#2A3F58"
+                  },
+                  children: "Nadie lo vio aún"
+                }, void 0, false)]
+              }, mn.id, true);
+            })
+          }, void 0, false)]
+        }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+          children: [/*#__PURE__*/_jsxDEV("div", {
+            style: px({
+              fontSize: 7,
+              color: "#C77DFF",
+              letterSpacing: 1,
+              marginBottom: 10
+            }),
+            children: ["💬 COMENTARIOS ", comments.length > 0 && /*#__PURE__*/_jsxDEV("span", {
+              style: {
+                color: "#7A8FA6"
+              },
+              children: ["(", comments.length, ")"]
+            }, void 0, true)]
+          }, void 0, true), comments.length === 0 ? /*#__PURE__*/_jsxDEV("div", {
+            style: {
+              color: "#2A3F58",
+              fontSize: 12,
+              padding: "8px 0"
+            },
+            children: "Sin comentarios aún."
+          }, void 0, false) : /*#__PURE__*/_jsxDEV("div", {
+            style: {
+              display: "flex",
+              flexDirection: "column",
+              gap: 7,
+              marginBottom: 12
+            },
+            children: comments.map(c => {
+              const isOwn = c.authorId === session.id,
+                canDelete = isAdmin || isOwn;
+              return /*#__PURE__*/_jsxDEV("div", {
+                style: {
+                  background: isOwn ? "#1A2332" : "#151E2D",
+                  border: `1px solid ${isOwn ? "#C77DFF33" : "#2A3F58"}`,
+                  padding: "9px 12px"
+                },
+                children: [/*#__PURE__*/_jsxDEV("div", {
+                  style: {
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: 5
+                  },
+                  children: [/*#__PURE__*/_jsxDEV("div", {
+                    style: {
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6
+                    },
+                    children: [/*#__PURE__*/_jsxDEV("span", {
+                      style: {
+                        fontSize: 14
+                      },
+                      children: c.authorEmoji || "💬"
+                    }, void 0, false), /*#__PURE__*/_jsxDEV("span", {
+                      style: {
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: isOwn ? "#C77DFF" : "#E8EDF2"
+                      },
+                      children: c.authorName
+                    }, void 0, false), /*#__PURE__*/_jsxDEV("span", {
+                      style: {
+                        fontSize: 10,
+                        color: "#2A3F58"
+                      },
+                      children: fmtDt(c.ts)
+                    }, void 0, false)]
+                  }, void 0, true), canDelete && /*#__PURE__*/_jsxDEV("button", {
+                    onClick: () => deleteComment(c.id),
+                    style: {
+                      background: "none",
+                      border: "none",
+                      color: "#2A3F58",
+                      cursor: "pointer",
+                      fontSize: 12,
+                      lineHeight: 1,
+                      padding: "0 2px"
+                    },
+                    title: "Eliminar",
+                    children: "×"
+                  }, void 0, false)]
+                }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+                  style: {
+                    fontSize: 12,
+                    color: "#E8EDF2",
+                    lineHeight: 1.6
+                  },
+                  children: c.text
+                }, void 0, false)]
+              }, c.id, true);
+            })
+          }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+            style: {
+              display: "flex",
+              gap: 6,
+              alignItems: "flex-start"
+            },
+            children: [/*#__PURE__*/_jsxDEV("span", {
+              style: {
+                fontSize: 16,
+                flexShrink: 0,
+                marginTop: 6
+              },
+              children: session.emoji || "💬"
+            }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+              style: {
+                flex: 1
+              },
+              children: [/*#__PURE__*/_jsxDEV("textarea", {
+                value: commentText,
+                onChange: e => setCommentText(e.target.value),
+                onKeyDown: e => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    addComment();
+                  }
+                },
+                placeholder: "Escribí un comentario... (Enter para enviar)",
+                style: {
+                  background: "#0D1117",
+                  border: "1px solid #2A3F58",
+                  color: "#E8EDF2",
+                  padding: "8px 10px",
+                  fontSize: 12,
+                  fontFamily: "Inter,sans-serif",
+                  outline: "none",
+                  width: "100%",
+                  resize: "none",
+                  minHeight: 58,
+                  lineHeight: 1.6
+                }
+              }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+                style: {
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginTop: 5
+                },
+                children: [/*#__PURE__*/_jsxDEV("span", {
+                  style: {
+                    fontSize: 10,
+                    color: "#2A3F58"
+                  },
+                  children: "Enter para enviar · Shift+Enter = nueva línea"
+                }, void 0, false), /*#__PURE__*/_jsxDEV("button", {
+                  onClick: addComment,
+                  style: {
+                    background: commentText.trim() ? "#C77DFF22" : "transparent",
+                    border: `1px solid ${commentText.trim() ? "#C77DFF" : "#2A3F58"}`,
+                    color: commentText.trim() ? "#C77DFF" : "#2A3F58",
+                    fontFamily: "'Press Start 2P',monospace",
+                    fontSize: 6,
+                    padding: "5px 10px",
+                    cursor: "pointer"
+                  },
+                  children: "COMENTAR"
+                }, void 0, false)]
+              }, void 0, true)]
+            }, void 0, true)]
+          }, void 0, true)]
+        }, void 0, true)]
+      }, void 0, true)]
+    }, void 0, true)
+  }, void 0, false);
+}
+
+// ── STORAGE ───────────────────────────────────────────────────────────────────
+const STORE_KEY = "tc-multiproject-v2";
+async function loadAll() {
+  try {
+    const r = await window.storage.get(STORE_KEY);
+    if (r && r.value) return JSON.parse(r.value);
+  } catch (e) {}
+  return null;
+}
+async function saveAll(data) {
+  try {
+    await window.storage.set(STORE_KEY, JSON.stringify({
+      ...data,
+      ts: Date.now()
+    }));
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+function makeProject(name, adminEmail = "") {
+  return {
+    id: "p" + Date.now() + Math.random().toString(36).slice(2, 6),
+    name,
+    projectName: name,
+    team: [],
+    modules: JSON.parse(JSON.stringify(DEF_MODS)),
+    projStart: addDays(TODAY, -7),
+    projEnd: addDays(TODAY, 60),
+    projAdminEmail: adminEmail,
+    projAdminPin: "1111",
+    adminName: "Admin del Proyecto",
+    adminEmail: adminEmail,
+    createdAt: Date.now()
+  };
+}
+
+// ── HELPER: get roles for an email ────────────────────────────────────────────
+function getRolesForEmail(email, appState) {
+  const roles = [];
+  const e = email.toLowerCase().trim();
+  if (!e) return roles;
+  // superadmin
+  if (e === (appState.superadminEmail || "nicolas.garcia@visma.com").toLowerCase()) roles.push({
+    type: "superadmin",
+    label: "👑 Superadmin",
+    color: "#FFD700",
+    desc: "Gestionar todos los proyectos"
+  });
+  // project admin
+  appState.projects.forEach(p => {
+    if (p.projAdminEmail && p.projAdminEmail.toLowerCase() === e) roles.push({
+      type: "projadmin",
+      label: "🏗️ Admin de Ciudad",
+      color: "#FFD700AA",
+      desc: p.projectName || p.name,
+      projectId: p.id,
+      pin: p.projAdminPin || "1111"
+    });
+  });
+  // team member
+  appState.projects.forEach(p => {
+    p.team.forEach(m => {
+      if (m.email && m.email.toLowerCase() === e) roles.push({
+        type: "team",
+        label: "🏙️ Ciudadano",
+        color: "#4ECDC4",
+        desc: p.projectName || p.name,
+        projectId: p.id,
+        memberId: m.id,
+        memberName: m.name,
+        memberEmoji: m.emoji,
+        pin: m.pin || "1234"
+      });
+    });
+  });
+  return roles;
+}
+
+// ── MINI CITY PREVIEW ─────────────────────────────────────────────────────────
+function MiniCityPreview({
+  modules
+}) {
+  const ref = useRef(null);
+  const am = modules.filter(m => m.active);
+  const doneKey = am.map(m => m.tasks.filter(t => t.done).length).join(",");
+  useEffect(() => {
+    const cv = ref.current;
+    if (!cv) return;
+    const ctx = cv.getContext("2d");
+    const W = 300,
+      H = 100;
+    ctx.clearRect(0, 0, W, H);
+    const sky = ctx.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0, "#04080F");
+    sky.addColorStop(1, "#0D1117");
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = "#FFF5C0";
+    ctx.beginPath();
+    ctx.arc(W - 22, 14, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#0A1018";
+    ctx.beginPath();
+    ctx.arc(W - 18, 11, 6, 0, Math.PI * 2);
+    ctx.fill();
+    for (let i = 0; i < 40; i++) {
+      const sx = (i * 137 + 11) % W,
+        sy = (i * 83 + 5) % (H * .55);
+      ctx.fillStyle = `rgba(255,255,255,${(0.1 + 0.4 * Math.abs(Math.sin(i))).toFixed(2)})`;
+      ctx.fillRect(sx, sy, .8, .8);
+    }
+    const ground = H - 16;
+    ctx.fillStyle = "#0D1520";
+    ctx.fillRect(0, ground, W, 16);
+    ctx.fillStyle = "#111C28";
+    ctx.fillRect(0, ground, W, 9);
+    ctx.fillStyle = "#FFD70022";
+    for (let i = 0; i < W; i += 40) ctx.fillRect(i, ground + 4, 18, 2);
+    if (am.length > 0) {
+      const slotW = Math.floor((W - 20) / am.length);
+      am.forEach((mod, i) => {
+        const p = mod.tasks.length ? mod.tasks.filter(t => t.done).length / mod.tasks.length : 0;
+        const bx = 10 + i * slotW + Math.floor((slotW - 20) / 2);
+        const bh = Math.max(6, Math.round(60 * Math.max(p, 0.08)));
+        ctx.fillStyle = mod.color + (p > 0 ? "CC" : "22");
+        ctx.fillRect(bx, ground - bh, 20, bh);
+        if (p > 0 && bh > 12) {
+          ctx.fillStyle = mod.color + "44";
+          for (let r = 0; r < 2; r++) for (let c = 0; c < 2; c++) if ((i + r + c) % 2 === 0) ctx.fillRect(bx + 2 + c * 8, ground - bh + 4 + r * 10, 6, 7);
+        }
+        const od = mod.tasks.filter(t => isOverdue(t)).length;
+        if (od > 0) {
+          ctx.fillStyle = "#FF4757";
+          ctx.beginPath();
+          ctx.arc(bx + 16, ground - bh + 4, 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.fillStyle = mod.color + "99";
+        ctx.font = "5px monospace";
+        ctx.textAlign = "center";
+        ctx.fillText(Math.round(p * 100) + "%", bx + 10, ground + 10);
+      });
+    } else {
+      ctx.fillStyle = "#2A3F58";
+      ctx.font = "5px monospace";
+      ctx.textAlign = "center";
+      ctx.fillText("SIN MÓDULOS", W / 2, H / 2);
+    }
+  }, [am.length, doneKey]);
+  return /*#__PURE__*/_jsxDEV("canvas", {
+    ref: ref,
+    width: 300,
+    height: 100,
+    style: {
+      width: "100%",
+      height: 100,
+      display: "block",
+      imageRendering: "pixelated"
+    }
+  }, void 0, false);
+}
+
+// ── PROJECT CARD ──────────────────────────────────────────────────────────────
+function ProjectCard({
+  proj,
+  role,
+  onOpen,
+  onPrint,
+  onDelete,
+  canDelete
+}) {
+  const px = s => ({
+    fontFamily: "'Press Start 2P',monospace",
+    ...s
+  });
+  const am = proj.modules.filter(m => m.active);
+  const totalXP = proj.modules.reduce((a, m) => a + m.tasks.filter(t => t.done).reduce((b, t) => b + t.xp, 0), 0);
+  const possXP = am.reduce((a, m) => a + m.tasks.reduce((b, t) => b + t.xp, 0), 0);
+  const pct = possXP > 0 ? Math.round(totalXP / possXP * 100) : 0;
+  const overdue = proj.modules.flatMap(m => m.active ? m.tasks.filter(t => isOverdue(t)) : []).length;
+  const doneTasks = proj.modules.reduce((a, m) => a + m.tasks.filter(t => t.done).length, 0);
+  const totalTasks = proj.modules.reduce((a, m) => a + m.tasks.length, 0);
+  const roleCol = role === "superadmin" || role === "projadmin" ? "#FFD700" : "#4ECDC4";
+  const roleLabel = role === "superadmin" ? "👑 SUPER" : role === "projadmin" ? "🏗️ ADMIN" : "🏙️ CIUDADANO";
+  // Date range: first task start = projStart, last task dueDate
+  const allDueDates = proj.modules.flatMap(m => m.tasks.filter(t => t.dueDate).map(t => t.dueDate)).sort();
+  const firstDate = proj.projStart || (allDueDates.length ? allDueDates[0] : null);
+  const lastDate = allDueDates.length ? allDueDates[allDueDates.length - 1] : proj.projEnd || null;
+  return /*#__PURE__*/_jsxDEV("div", {
+    style: {
+      background: "#1A2332",
+      border: "1px solid #2A3F58",
+      display: "flex",
+      flexDirection: "column",
+      overflow: "hidden",
+      transition: "border-color .15s"
+    },
+    onMouseEnter: e => e.currentTarget.style.borderColor = roleCol,
+    onMouseLeave: e => e.currentTarget.style.borderColor = "#2A3F58",
+    children: [/*#__PURE__*/_jsxDEV(MiniCityPreview, {
+      modules: proj.modules
+    }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+      style: {
+        padding: 12
+      },
+      children: [/*#__PURE__*/_jsxDEV("div", {
+        style: {
+          display: "flex",
+          alignItems: "flex-start",
+          gap: 8,
+          marginBottom: 7
+        },
+        children: [/*#__PURE__*/_jsxDEV("div", {
+          style: {
+            flex: 1
+          },
+          children: [/*#__PURE__*/_jsxDEV("div", {
+            style: px({
+              fontSize: 8,
+              color: "#E8EDF2",
+              marginBottom: 3,
+              lineHeight: 1.5
+            }),
+            children: proj.projectName || proj.name
+          }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+            style: {
+              fontSize: 10,
+              color: "#7A8FA6"
+            },
+            children: [proj.team.length, " ciudadano", proj.team.length !== 1 ? "s" : "", " · ", am.length, " módulo", am.length !== 1 ? "s" : ""]
+          }, void 0, true)]
+        }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+          style: {
+            textAlign: "right",
+            flexShrink: 0
+          },
+          children: [/*#__PURE__*/_jsxDEV("div", {
+            style: px({
+              fontSize: 13,
+              color: pct === 100 ? "#A8E6CF" : roleCol
+            }),
+            children: [pct, "%"]
+          }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+            style: {
+              fontSize: 9,
+              color: roleCol,
+              fontFamily: "'Press Start 2P',monospace",
+              marginTop: 2
+            },
+            children: roleLabel
+          }, void 0, false)]
+        }, void 0, true)]
+      }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+        style: {
+          height: 5,
+          background: "#0D1117",
+          marginBottom: 8,
+          overflow: "hidden"
+        },
+        children: /*#__PURE__*/_jsxDEV("div", {
+          style: {
+            height: "100%",
+            width: `${pct}%`,
+            background: pct === 100 ? "#A8E6CF" : roleCol,
+            transition: "width .5s"
+          }
+        }, void 0, false)
+      }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          gap: 4,
+          marginBottom: 7,
+          fontSize: 10
+        },
+        children: [/*#__PURE__*/_jsxDEV("span", {
+          style: {
+            color: "#4ECDC466",
+            fontSize: 9
+          },
+          children: "📅"
+        }, void 0, false), /*#__PURE__*/_jsxDEV("span", {
+          style: {
+            color: firstDate ? "#7A8FA6" : "#2A3F58"
+          },
+          children: firstDate ? fmtD(firstDate) : "sin inicio"
+        }, void 0, false), /*#__PURE__*/_jsxDEV("span", {
+          style: {
+            color: "#2A3F58",
+            fontSize: 9
+          },
+          children: "→"
+        }, void 0, false), /*#__PURE__*/_jsxDEV("span", {
+          style: {
+            color: lastDate ? isOverdue({
+              dueDate: lastDate,
+              done: doneTasks === totalTasks && totalTasks > 0
+            }) ? "#FF4757" : "#7A8FA6" : "#2A3F58"
+          },
+          children: lastDate ? fmtD(lastDate) : "sin fin"
+        }, void 0, false), lastDate && parseD(lastDate) < TODAY && doneTasks < totalTasks && /*#__PURE__*/_jsxDEV("span", {
+          style: {
+            color: "#FF4757",
+            fontSize: 8
+          },
+          children: "⚠"
+        }, void 0, false)]
+      }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+        style: {
+          display: "flex",
+          gap: 10,
+          marginBottom: 10,
+          fontSize: 10,
+          color: "#7A8FA6",
+          flexWrap: "wrap"
+        },
+        children: [/*#__PURE__*/_jsxDEV("span", {
+          children: [doneTasks, "/", totalTasks, " tareas"]
+        }, void 0, true), overdue > 0 && /*#__PURE__*/_jsxDEV("span", {
+          style: {
+            color: "#FF4757",
+            fontFamily: "'Press Start 2P',monospace",
+            fontSize: 8
+          },
+          children: ["⚠", overdue, " venc."]
+        }, void 0, true)]
+      }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+        style: {
+          display: "flex",
+          gap: 6
+        },
+        children: [/*#__PURE__*/_jsxDEV("button", {
+          onClick: e => {
+            e.stopPropagation();
+            onOpen();
+          },
+          style: {
+            flex: 1,
+            background: roleCol,
+            color: "#0D1117",
+            border: "none",
+            fontFamily: "'Press Start 2P',monospace",
+            fontSize: 6,
+            padding: "7px",
+            cursor: "pointer"
+          },
+          children: "▶ ABRIR"
+        }, void 0, false), /*#__PURE__*/_jsxDEV("button", {
+          onClick: e => {
+            e.stopPropagation();
+            onPrint();
+          },
+          style: {
+            background: "#0D1117",
+            border: "1px solid #2A3F58",
+            color: "#7A8FA6",
+            fontFamily: "'Press Start 2P',monospace",
+            fontSize: 6,
+            padding: "7px 9px",
+            cursor: "pointer"
+          },
+          title: "Ver resumen",
+          children: "🖨"
+        }, void 0, false), canDelete && /*#__PURE__*/_jsxDEV("button", {
+          onClick: e => {
+            e.stopPropagation();
+            onDelete();
+          },
+          style: {
+            background: "#0D1117",
+            border: "1px solid #FF475733",
+            color: "#FF4757",
+            fontFamily: "'Press Start 2P',monospace",
+            fontSize: 6,
+            padding: "7px 9px",
+            cursor: "pointer"
+          },
+          children: "✕"
+        }, void 0, false)]
+      }, void 0, true)]
+    }, void 0, true)]
+  }, void 0, true);
+}
+
+// ── PRINT REPORT ──────────────────────────────────────────────────────────────
+function PrintReport({
+  proj,
+  onClose
+}) {
+  const am = proj.modules.filter(m => m.active);
+  const totalXP = proj.modules.reduce((a, m) => a + m.tasks.filter(t => t.done).reduce((b, t) => b + t.xp, 0), 0);
+  const possXP = am.reduce((a, m) => a + m.tasks.reduce((b, t) => b + t.xp, 0), 0);
+  const cPct = possXP > 0 ? Math.round(totalXP / possXP * 100) : 0;
+  const now = new Date().toLocaleDateString('es-AR', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric'
+  });
+  const sTitle = {
+    fontSize: 11,
+    fontWeight: 700,
+    color: "#475569",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+    borderBottom: "2px solid #e2e8f0",
+    paddingBottom: 6,
+    marginBottom: 14,
+    marginTop: 20,
+    fontFamily: "monospace"
+  };
+  const doDownload = () => {
+    const el = document.getElementById("tc-print-body");
+    if (!el) return;
+    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>${proj.projectName} — TalentCity</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;background:white;padding:24px;max-width:820px;margin:0 auto}@media print{body{padding:0;max-width:none}@page{size:A4;margin:15mm 12mm}}table{border-collapse:collapse;width:100%}td,th{padding:5px 8px;border:1px solid #e2e8f0;font-size:12px}th{background:#f8fafc;font-size:10px;color:#64748b;text-align:left}</style></head><body>${el.innerHTML}</body></html>`;
+    const b = new Blob([html], {
+        type: "text/html"
+      }),
+      u = URL.createObjectURL(b),
+      a = document.createElement("a");
+    a.href = u;
+    a.download = `TalentCity-${(proj.projectName || "proyecto").replace(/\s/g, "-")}.html`;
+    a.click();
+    URL.revokeObjectURL(u);
+  };
+  return /*#__PURE__*/_jsxDEV("div", {
+    style: {
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: "white",
+      zIndex: 500,
+      overflowY: "auto",
+      fontFamily: "'Segoe UI',Arial,sans-serif",
+      color: "#1e293b"
+    },
+    children: [/*#__PURE__*/_jsxDEV("div", {
+      style: {
+        background: "#080C12",
+        padding: "10px 20px",
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        position: "sticky",
+        top: 0,
+        zIndex: 10,
+        borderBottom: "1px solid #1E2D40"
+      },
+      children: [/*#__PURE__*/_jsxDEV("button", {
+        onClick: onClose,
+        style: {
+          background: "none",
+          border: "1px solid #2A3F58",
+          color: "#7A8FA6",
+          fontFamily: "'Press Start 2P',monospace",
+          fontSize: 6,
+          padding: "5px 10px",
+          cursor: "pointer"
+        },
+        children: "← VOLVER"
+      }, void 0, false), /*#__PURE__*/_jsxDEV("span", {
+        style: {
+          fontSize: 12,
+          color: "#E8EDF2",
+          fontWeight: 600,
+          flex: 1
+        },
+        children: [proj.projectName, " — Resumen"]
+      }, void 0, true), /*#__PURE__*/_jsxDEV("button", {
+        onClick: doDownload,
+        style: {
+          background: "#FFD700",
+          color: "#0D1117",
+          border: "none",
+          fontFamily: "'Press Start 2P',monospace",
+          fontSize: 7,
+          padding: "7px 14px",
+          cursor: "pointer"
+        },
+        children: "↓ DESCARGAR HTML"
+      }, void 0, false)]
+    }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+      id: "tc-print-body",
+      style: {
+        maxWidth: 760,
+        margin: "0 auto",
+        padding: "24px 20px"
+      },
+      children: [/*#__PURE__*/_jsxDEV("div", {
+        style: {
+          borderBottom: "3px solid #0f172a",
+          paddingBottom: 12,
+          marginBottom: 20
+        },
+        children: [/*#__PURE__*/_jsxDEV("div", {
+          style: {
+            fontSize: 22,
+            fontWeight: 800,
+            marginBottom: 4
+          },
+          children: ["🏙️ ", proj.projectName]
+        }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+          style: {
+            fontSize: 12,
+            color: "#64748b"
+          },
+          children: ["Resumen de avance · ", now, " · Admin: ", proj.adminName || "—"]
+        }, void 0, true)]
+      }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+        style: {
+          display: "grid",
+          gridTemplateColumns: "repeat(4,1fr)",
+          gap: 10,
+          marginBottom: 20
+        },
+        children: [{
+          l: "Ciudad",
+          v: cPct + "%"
+        }, {
+          l: "Módulos",
+          v: am.length
+        }, {
+          l: "XP Total",
+          v: totalXP.toLocaleString()
+        }, {
+          l: "Ciudadanos",
+          v: proj.team.length
+        }].map(s => /*#__PURE__*/_jsxDEV("div", {
+          style: {
+            background: "#f8fafc",
+            border: "1px solid #e2e8f0",
+            padding: "10px",
+            textAlign: "center"
+          },
+          children: [/*#__PURE__*/_jsxDEV("div", {
+            style: {
+              fontSize: 20,
+              fontWeight: 800,
+              marginBottom: 3
+            },
+            children: s.v
+          }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+            style: {
+              fontSize: 10,
+              color: "#64748b",
+              textTransform: "uppercase",
+              letterSpacing: .5
+            },
+            children: s.l
+          }, void 0, false)]
+        }, s.l, true))
+      }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+        style: sTitle,
+        children: "📊 GANTT — AVANCE POR MÓDULO"
+      }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+        style: {
+          border: "1px solid #e2e8f0",
+          marginBottom: 20
+        },
+        children: [/*#__PURE__*/_jsxDEV("div", {
+          style: {
+            display: "grid",
+            gridTemplateColumns: "150px 1fr 50px 70px",
+            background: "#f1f5f9",
+            padding: "7px 10px",
+            fontSize: 10,
+            color: "#64748b",
+            fontWeight: 600,
+            borderBottom: "1px solid #e2e8f0"
+          },
+          children: [/*#__PURE__*/_jsxDEV("span", {
+            children: "MÓDULO"
+          }, void 0, false), /*#__PURE__*/_jsxDEV("span", {
+            children: "PROGRESO"
+          }, void 0, false), /*#__PURE__*/_jsxDEV("span", {
+            style: {
+              textAlign: "right"
+            },
+            children: "%"
+          }, void 0, false), /*#__PURE__*/_jsxDEV("span", {
+            style: {
+              textAlign: "right"
+            },
+            children: "TAREAS"
+          }, void 0, false)]
+        }, void 0, true), am.map((mod, i) => {
+          const done = mod.tasks.filter(t => t.done).length,
+            tot = mod.tasks.length,
+            p = tot ? Math.round(done / tot * 100) : 0;
+          const startD = parseD(proj.projStart) || new Date(),
+            endD = parseD(proj.projEnd) || new Date(TODAY.getTime() + 60 * 864e5);
+          const totalD = Math.max(1, (endD - startD) / 864e5),
+            todayOff = Math.round((TODAY - startD) / 864e5);
+          const todayPct = Math.max(0, Math.min(100, todayOff / totalD * 100));
+          return /*#__PURE__*/_jsxDEV("div", {
+            style: {
+              display: "grid",
+              gridTemplateColumns: "150px 1fr 50px 70px",
+              padding: "9px 10px",
+              alignItems: "center",
+              background: i % 2 === 0 ? "white" : "#fafafa",
+              borderBottom: "1px solid #f1f5f9"
+            },
+            children: [/*#__PURE__*/_jsxDEV("span", {
+              style: {
+                fontSize: 12,
+                fontWeight: 600,
+                display: "flex",
+                alignItems: "center",
+                gap: 4
+              },
+              children: [mod.icon, " ", mod.name.length > 14 ? mod.name.slice(0, 13) + "…" : mod.name]
+            }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+              style: {
+                position: "relative",
+                height: 12,
+                background: "#e2e8f0",
+                margin: "0 10px"
+              },
+              children: [/*#__PURE__*/_jsxDEV("div", {
+                style: {
+                  height: "100%",
+                  width: `${p}%`,
+                  background: mod.color
+                }
+              }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+                style: {
+                  position: "absolute",
+                  left: `${todayPct}%`,
+                  top: -2,
+                  width: 2,
+                  height: 16,
+                  background: "#ef4444",
+                  transform: "translateX(-50%)"
+                }
+              }, void 0, false)]
+            }, void 0, true), /*#__PURE__*/_jsxDEV("span", {
+              style: {
+                textAlign: "right",
+                fontWeight: 700,
+                fontSize: 11,
+                color: mod.color
+              },
+              children: [p, "%"]
+            }, void 0, true), /*#__PURE__*/_jsxDEV("span", {
+              style: {
+                textAlign: "right",
+                fontSize: 11,
+                color: "#64748b"
+              },
+              children: [done, "/", tot]
+            }, void 0, true)]
+          }, mod.id, true);
+        })]
+      }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+        style: sTitle,
+        children: "📋 TAREAS POR MÓDULO"
+      }, void 0, false), am.map(mod => {
+        const done = mod.tasks.filter(t => t.done).length,
+          tot = mod.tasks.length,
+          pMod = tot ? Math.round(done / tot * 100) : 0;
+        const mCount = mod.tasks.reduce((a, t) => a + (t.minutes || []).length, 0);
+        return /*#__PURE__*/_jsxDEV("div", {
+          style: {
+            marginBottom: 14
+          },
+          children: [/*#__PURE__*/_jsxDEV("div", {
+            style: {
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "7px 12px",
+              background: mod.color + "18",
+              borderLeft: `4px solid ${mod.color}`
+            },
+            children: [/*#__PURE__*/_jsxDEV("span", {
+              style: {
+                fontSize: 16
+              },
+              children: mod.icon
+            }, void 0, false), /*#__PURE__*/_jsxDEV("span", {
+              style: {
+                fontWeight: 700,
+                fontSize: 13
+              },
+              children: mod.name
+            }, void 0, false), /*#__PURE__*/_jsxDEV("span", {
+              style: {
+                fontSize: 11,
+                color: "#64748b"
+              },
+              children: ["— ", mod.phase]
+            }, void 0, true), mCount > 0 && /*#__PURE__*/_jsxDEV("span", {
+              style: {
+                fontSize: 11,
+                color: "#475569",
+                marginLeft: "auto"
+              },
+              children: ["📋", mCount]
+            }, void 0, true), /*#__PURE__*/_jsxDEV("span", {
+              style: {
+                fontSize: 11,
+                fontWeight: 700,
+                color: mod.color,
+                marginLeft: mCount > 0 ? 0 : "auto"
+              },
+              children: [done, "/", tot, " · ", pMod, "%"]
+            }, void 0, true)]
+          }, void 0, true), /*#__PURE__*/_jsxDEV("table", {
+            style: {
+              width: "100%",
+              borderCollapse: "collapse",
+              fontSize: 12
+            },
+            children: [/*#__PURE__*/_jsxDEV("thead", {
+              children: /*#__PURE__*/_jsxDEV("tr", {
+                style: {
+                  background: "#f8fafc"
+                },
+                children: ["TAREA", "INICIO", "FIN / DÍAS", "ESTADO", "HS ADMIN", "HS CLIENTE", "MINUTAS", "XP"].map(h => /*#__PURE__*/_jsxDEV("th", {
+                  style: {
+                    padding: "5px 8px",
+                    textAlign: "left",
+                    fontSize: 10,
+                    color: "#94a3b8",
+                    fontWeight: 600,
+                    borderBottom: "1px solid #e2e8f0"
+                  },
+                  children: h
+                }, h, false))
+              }, void 0, false)
+            }, void 0, false), /*#__PURE__*/_jsxDEV("tbody", {
+              children: mod.tasks.map((t, ti) => {
+                const ov = isOverdue(t),
+                  sn = isDueSoon(t);
+                const stCol = t.done ? "#16a34a" : ov ? "#dc2626" : sn ? "#d97706" : "#64748b";
+                const hLog = t.hoursLog || [];
+                const hAdmin = hLog.filter(h => h.authorRole === "admin").reduce((a, h) => a + h.hours, 0);
+                const hTeam = hLog.filter(h => h.authorRole === "team").reduce((a, h) => a + h.hours, 0);
+                return /*#__PURE__*/_jsxDEV("tr", {
+                  style: {
+                    background: ti % 2 === 0 ? "white" : "#fafafa",
+                    borderBottom: "1px solid #f1f5f9"
+                  },
+                  children: [/*#__PURE__*/_jsxDEV("td", {
+                    style: {
+                      padding: "5px 8px",
+                      color: t.done ? "#94a3b8" : "#1e293b",
+                      textDecoration: t.done ? "line-through" : "none"
+                    },
+                    children: t.label
+                  }, void 0, false), /*#__PURE__*/_jsxDEV("td", {
+                    style: {
+                      padding: "5px 8px",
+                      color: "#64748b",
+                      textAlign: "center",
+                      whiteSpace: "nowrap"
+                    },
+                    children: t.startDate ? fmtD(t.startDate) : "—"
+                  }, void 0, false), /*#__PURE__*/_jsxDEV("td", {
+                    style: {
+                      padding: "5px 8px",
+                      color: ov ? "#dc2626" : sn ? "#d97706" : "#64748b",
+                      textAlign: "center",
+                      whiteSpace: "nowrap"
+                    },
+                    children: [t.dueDate ? fmtD(t.dueDate) : "—", t.duration ? /*#__PURE__*/_jsxDEV("span", {
+                      style: {
+                        color: "#94a3b8",
+                        fontSize: 10
+                      },
+                      children: [" ", t.duration, "d"]
+                    }, void 0, true) : ""]
+                  }, void 0, true), /*#__PURE__*/_jsxDEV("td", {
+                    style: {
+                      padding: "5px 8px",
+                      fontWeight: 600,
+                      color: stCol,
+                      textAlign: "center",
+                      whiteSpace: "nowrap"
+                    },
+                    children: t.done ? "✓ Hecha" : ov ? "⚠ Vencida" : sn ? "⏰ Próxima" : "En curso"
+                  }, void 0, false), /*#__PURE__*/_jsxDEV("td", {
+                    style: {
+                      padding: "5px 8px",
+                      textAlign: "center",
+                      color: hAdmin > 0 ? "#b45309" : "#94a3b8",
+                      fontWeight: hAdmin > 0 ? 600 : 400
+                    },
+                    children: hAdmin > 0 ? `${hAdmin}h` : "—"
+                  }, void 0, false), /*#__PURE__*/_jsxDEV("td", {
+                    style: {
+                      padding: "5px 8px",
+                      textAlign: "center",
+                      color: hTeam > 0 ? "#0369a1" : "#94a3b8",
+                      fontWeight: hTeam > 0 ? 600 : 400
+                    },
+                    children: hTeam > 0 ? `${hTeam}h` : "—"
+                  }, void 0, false), /*#__PURE__*/_jsxDEV("td", {
+                    style: {
+                      padding: "5px 8px",
+                      textAlign: "center"
+                    },
+                    children: (t.minutes || []).length > 0 ? `📋${(t.minutes || []).length}` : "—"
+                  }, void 0, false), /*#__PURE__*/_jsxDEV("td", {
+                    style: {
+                      padding: "5px 8px",
+                      textAlign: "right",
+                      fontFamily: "monospace",
+                      color: "#94a3b8"
+                    },
+                    children: ["+", t.xp]
+                  }, void 0, true)]
+                }, t.id, true);
+              })
+            }, void 0, false)]
+          }, void 0, true)]
+        }, mod.id, true);
+      }), /*#__PURE__*/_jsxDEV("div", {
+        style: {
+          marginTop: 20,
+          paddingTop: 10,
+          borderTop: "1px solid #e2e8f0",
+          display: "flex",
+          justifyContent: "space-between",
+          fontSize: 10,
+          color: "#94a3b8"
+        },
+        children: [/*#__PURE__*/_jsxDEV("span", {
+          children: ["TalentCity · ", proj.projectName]
+        }, void 0, true), /*#__PURE__*/_jsxDEV("span", {
+          children: now
+        }, void 0, false)]
+      }, void 0, true)]
+    }, void 0, true)]
+  }, void 0, true);
+}
+
+// ── MAIN APP ──────────────────────────────────────────────────────────────────
+function TalentCity() {
+  const [appState, setAppState] = useState(null);
+  const [screen, setScreen] = useState("login"); // login | dashboard | project | print
+  const [session, setSession] = useState(null);
+  const [activeProjectId, setActiveProjectId] = useState(null);
+  const [printProjectId, setPrintProjectId] = useState(null);
+  const [toast, setToast] = useState(null);
+  // login flow state (hoisted to avoid nested hooks)
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPin, setLoginPin] = useState("");
+  const [loginStep, setLoginStep] = useState("email"); // email | pin
+  const [loginRoles, setLoginRoles] = useState([]);
+  const [loginError, setLoginError] = useState("");
+  // dashboard state
+  const [showNewProj, setShowNewProj] = useState(false);
+  const [newProjName, setNewProjName] = useState("");
+  const [dashTab, setDashTab] = useState("projects"); // projects | export
+  const [dayMode, setDayMode] = useState(false); // ☀️/🌙 theme
+
+  useEffect(() => {
+    loadAll().then(d => {
+      if (d && d.projects) {
+        setAppState(d);
+      } else {
+        const defaultProj = makeProject("Mi Ciudad");
+        const init = {
+          projects: [defaultProj],
+          superadminEmail: "nicolas.garcia@visma.com",
+          superadminPin: "0000",
+          superadminName: "Nicolás García"
+        };
+        setAppState(init);
+      }
+    });
+  }, []);
+  const showToast = (msg, type = "ok") => {
+    setToast({
+      msg,
+      type
+    });
+    setTimeout(() => setToast(null), 2800);
+  };
+  const persist2 = async (ns, silent = true) => {
+    const ok = await saveAll(ns);
+    if (!ok && !silent) showToast("Error al guardar", "error");
+    return ok;
+  };
+  const updApp = ns => setAppState(ns);
+  const ToastEl = toast ? /*#__PURE__*/_jsxDEV("div", {
+    style: {
+      position: "fixed",
+      bottom: 18,
+      right: 18,
+      zIndex: 900,
+      background: "#1E2D40",
+      border: `1px solid ${toast.type === "error" ? "#FF4757" : "#4ECDC4"}`,
+      padding: "10px 14px",
+      maxWidth: 280,
+      fontFamily: "'Press Start 2P',monospace",
+      animation: "slideIn .3s ease"
+    },
+    children: [/*#__PURE__*/_jsxDEV("div", {
+      style: {
+        fontSize: 5,
+        color: toast.type === "error" ? "#FF4757" : "#4ECDC4",
+        marginBottom: 3
+      },
+      children: toast.type === "error" ? "ERROR" : "✓ OK"
+    }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+      style: {
+        fontSize: 12,
+        fontFamily: "Inter,sans-serif"
+      },
+      children: toast.msg
+    }, void 0, false), /*#__PURE__*/_jsxDEV("style", {
+      children: `@keyframes slideIn{from{transform:translateX(120%);opacity:0}to{transform:translateX(0);opacity:1}}`
+    }, void 0, false)]
+  }, void 0, true) : null;
+  if (!appState) return /*#__PURE__*/_jsxDEV("div", {
+    style: {
+      background: "#0D1117",
+      color: "#4ECDC4",
+      height: "100vh",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontFamily: "'Press Start 2P',monospace",
+      fontSize: 10
+    },
+    children: "CARGANDO..."
+  }, void 0, false);
+
+  // ── LOGIN SCREEN ─────────────────────────────────────────────────────────────
+  const LoginScreen = () => {
+    const px2 = s => ({
+      fontFamily: "'Press Start 2P',monospace",
+      ...s
+    });
+    const handleEmailNext = () => {
+      const e = loginEmail.toLowerCase().trim();
+      if (!e || !e.includes("@")) {
+        setLoginError("Ingresá un email válido");
+        return;
+      }
+      const roles = getRolesForEmail(e, appState);
+      if (roles.length === 0) {
+        setLoginError("No encontramos una cuenta con ese email.\nContactá al administrador.");
+        return;
+      }
+      setLoginRoles(roles);
+      setLoginStep("pin");
+      setLoginError("");
+      setLoginPin("");
+    };
+    const handlePinSubmit = () => {
+      const e = loginEmail.toLowerCase().trim();
+      // Try each role in order — all roles for this email share the same PIN? No, each role has its own PIN.
+      // We try the PIN against all roles and collect matching ones.
+      const matched = loginRoles.filter(r => {
+        const expected = r.type === "superadmin" ? appState.superadminPin || "0000" : r.pin || "1111";
+        return loginPin === expected;
+      });
+      if (matched.length === 0) {
+        setLoginError("PIN incorrecto");
+        setLoginPin("");
+        return;
+      }
+      // Build session
+      const isSuperadmin = matched.some(r => r.type === "superadmin");
+      const isProjAdmin = matched.some(r => r.type === "projadmin");
+      const isTeam = matched.some(r => r.type === "team");
+      const teamRole = matched.find(r => r.type === "team");
+      const projAdminRole = matched.find(r => r.type === "projadmin");
+      setSession({
+        email: e,
+        name: isSuperadmin ? appState.superadminName || "Superadmin" : isProjAdmin ? projAdminRole?.desc || "Admin" : teamRole?.memberName || e,
+        emoji: isTeam ? teamRole?.memberEmoji : isSuperadmin ? "👑" : "🏗️",
+        isSuperadmin,
+        isProjAdmin,
+        isTeam,
+        matchedRoles: matched
+      });
+      setScreen("dashboard");
+      setLoginError("");
+    };
+    return /*#__PURE__*/_jsxDEV("div", {
+      style: {
+        background: "#004949",
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontFamily: "Inter,sans-serif",
+        padding: 16
+      },
+      children: /*#__PURE__*/_jsxDEV("div", {
+        style: {
+          maxWidth: 420,
+          width: "100%"
+        },
+        children: [/*#__PURE__*/_jsxDEV("div", {
+          style: {
+            textAlign: "center",
+            marginBottom: 32
+          },
+          children: [/*#__PURE__*/_jsxDEV("img", {
+            src: LOGO_B64,
+            alt: "Mandú by Visma",
+            style: {
+              width: 200,
+              maxWidth: "75%",
+              marginBottom: 14,
+              filter: "drop-shadow(0 2px 16px rgba(0,0,0,0.5))"
+            }
+          }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+            style: {
+              fontSize: 13,
+              color: "#7dc9b2",
+              letterSpacing: .5
+            },
+            children: [appState.projects.length, " proyecto", appState.projects.length !== 1 ? "s" : "", " activo", appState.projects.length !== 1 ? "s" : ""]
+          }, void 0, true)]
+        }, void 0, true), loginStep === "email" && /*#__PURE__*/_jsxDEV("div", {
+          style: {
+            background: "#003030",
+            border: "1px solid #006060",
+            padding: 24
+          },
+          children: [/*#__PURE__*/_jsxDEV("div", {
+            style: px2({
+              fontSize: 8,
+              color: "#7dc9b2",
+              marginBottom: 16
+            }),
+            children: "INICIAR SESIÓN"
+          }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+            style: {
+              fontSize: 12,
+              color: "#7dc9b2",
+              marginBottom: 6
+            },
+            children: "CORREO ELECTRÓNICO"
+          }, void 0, false), /*#__PURE__*/_jsxDEV("input", {
+            autoFocus: true,
+            type: "email",
+            value: loginEmail,
+            onChange: e => {
+              setLoginEmail(e.target.value);
+              setLoginError("");
+            },
+            onKeyDown: e => e.key === "Enter" && handleEmailNext(),
+            placeholder: "tu@empresa.com",
+            style: {
+              background: "#0D1117",
+              border: `1px solid ${loginError ? "#FF4757" : "#2A3F58"}`,
+              color: "#E8EDF2",
+              padding: "11px 14px",
+              fontSize: 14,
+              width: "100%",
+              outline: "none",
+              marginBottom: 8,
+              boxSizing: "border-box",
+              fontFamily: "Inter,sans-serif"
+            }
+          }, void 0, false), loginError && /*#__PURE__*/_jsxDEV("div", {
+            style: {
+              color: "#FF4757",
+              fontSize: 11,
+              marginBottom: 8,
+              whiteSpace: "pre-wrap"
+            },
+            children: ["⚠ ", loginError]
+          }, void 0, true), /*#__PURE__*/_jsxDEV("button", {
+            onClick: handleEmailNext,
+            style: {
+              background: "#4ECDC4",
+              color: "#0D1117",
+              border: "none",
+              fontFamily: "'Press Start 2P',monospace",
+              fontSize: 8,
+              padding: "11px",
+              cursor: "pointer",
+              width: "100%",
+              marginTop: 4
+            },
+            children: "CONTINUAR →"
+          }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+            style: {
+              marginTop: 14,
+              fontSize: 11,
+              color: "#2A3F58",
+              textAlign: "center",
+              lineHeight: 1.6
+            },
+            children: "Ingresá el email con el que fuiste dado de alta en el sistema"
+          }, void 0, false)]
+        }, void 0, true), loginStep === "pin" && /*#__PURE__*/_jsxDEV("div", {
+          style: {
+            background: "#1A2332",
+            border: "1px solid #2A3F58",
+            padding: 24
+          },
+          children: [/*#__PURE__*/_jsxDEV("div", {
+            style: {
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              marginBottom: 18
+            },
+            children: [/*#__PURE__*/_jsxDEV("button", {
+              onClick: () => {
+                setLoginStep("email");
+                setLoginError("");
+                setLoginPin("");
+              },
+              style: {
+                background: "none",
+                border: "none",
+                color: "#7A8FA6",
+                cursor: "pointer",
+                fontSize: 16,
+                lineHeight: 1
+              },
+              children: "←"
+            }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+              children: [/*#__PURE__*/_jsxDEV("div", {
+                style: px2({
+                  fontSize: 7,
+                  color: "#4ECDC4",
+                  marginBottom: 3
+                }),
+                children: "BIENVENIDO/A"
+              }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+                style: {
+                  fontSize: 13,
+                  color: "#E8EDF2",
+                  fontWeight: 600
+                },
+                children: loginEmail
+              }, void 0, false)]
+            }, void 0, true)]
+          }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+            style: {
+              marginBottom: 16
+            },
+            children: [/*#__PURE__*/_jsxDEV("div", {
+              style: {
+                fontSize: 11,
+                color: "#7A8FA6",
+                marginBottom: 8
+              },
+              children: "TUS ROLES EN EL SISTEMA"
+            }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+              style: {
+                display: "flex",
+                flexDirection: "column",
+                gap: 5
+              },
+              children: loginRoles.map((r, i) => /*#__PURE__*/_jsxDEV("div", {
+                style: {
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "6px 10px",
+                  background: "#0D1117",
+                  border: "1px solid #2A3F58"
+                },
+                children: [/*#__PURE__*/_jsxDEV("span", {
+                  style: {
+                    fontSize: 14
+                  },
+                  children: r.type === "superadmin" ? "👑" : r.type === "projadmin" ? "🏗️" : "🏙️"
+                }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+                  style: {
+                    flex: 1
+                  },
+                  children: [/*#__PURE__*/_jsxDEV("div", {
+                    style: {
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: r.color
+                    },
+                    children: r.label
+                  }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+                    style: {
+                      fontSize: 10,
+                      color: "#7A8FA6"
+                    },
+                    children: r.desc
+                  }, void 0, false)]
+                }, void 0, true)]
+              }, i, true))
+            }, void 0, false)]
+          }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+            style: {
+              fontSize: 12,
+              color: "#7A8FA6",
+              marginBottom: 6
+            },
+            children: "TU PIN DE ACCESO"
+          }, void 0, false), /*#__PURE__*/_jsxDEV("input", {
+            autoFocus: true,
+            type: "password",
+            maxLength: 8,
+            value: loginPin,
+            onChange: e => {
+              setLoginPin(e.target.value);
+              setLoginError("");
+            },
+            onKeyDown: e => e.key === "Enter" && handlePinSubmit(),
+            style: {
+              background: "#0D1117",
+              border: `1px solid ${loginError ? "#FF4757" : "#2A3F58"}`,
+              color: "#E8EDF2",
+              padding: "11px",
+              fontSize: 22,
+              width: "100%",
+              outline: "none",
+              letterSpacing: 8,
+              textAlign: "center",
+              marginBottom: 8,
+              boxSizing: "border-box"
+            },
+            placeholder: "••••"
+          }, void 0, false), loginError && /*#__PURE__*/_jsxDEV("div", {
+            style: {
+              color: "#FF4757",
+              fontSize: 11,
+              marginBottom: 8
+            },
+            children: ["⚠ ", loginError]
+          }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+            style: {
+              fontSize: 10,
+              color: "#2A3F58",
+              marginBottom: 12,
+              textAlign: "center"
+            },
+            children: "PIN por defecto: 0000 (superadmin) · 1111 (admin proyecto) · 1234 (ciudadano)"
+          }, void 0, false), /*#__PURE__*/_jsxDEV("button", {
+            onClick: handlePinSubmit,
+            style: {
+              background: "#FFD700",
+              color: "#0D1117",
+              border: "none",
+              fontFamily: "'Press Start 2P',monospace",
+              fontSize: 8,
+              padding: "11px",
+              cursor: "pointer",
+              width: "100%"
+            },
+            children: "INGRESAR"
+          }, void 0, false)]
+        }, void 0, true)]
+      }, void 0, true)
+    }, void 0, false);
+  };
+
+  // ── DASHBOARD ─────────────────────────────────────────────────────────────────
+  const Dashboard = () => {
+    const px2 = s => ({
+      fontFamily: "'Press Start 2P',monospace",
+      ...s
+    });
+    const {
+      isSuperadmin,
+      isProjAdmin,
+      isTeam,
+      matchedRoles
+    } = session;
+
+    // Which projects can this user see + with what role
+    const myProjects = [];
+    if (isSuperadmin) {
+      appState.projects.forEach(p => myProjects.push({
+        proj: p,
+        role: "superadmin"
+      }));
+    } else {
+      // projadmin roles
+      matchedRoles.filter(r => r.type === "projadmin").forEach(r => {
+        const p = appState.projects.find(x => x.id === r.projectId);
+        if (p && !myProjects.find(x => x.proj.id === p.id)) myProjects.push({
+          proj: p,
+          role: "projadmin"
+        });
+      });
+      // team roles
+      matchedRoles.filter(r => r.type === "team").forEach(r => {
+        const p = appState.projects.find(x => x.id === r.projectId);
+        if (p && !myProjects.find(x => x.proj.id === p.id)) myProjects.push({
+          proj: p,
+          role: "team"
+        });
+      });
+    }
+    const canCreate = isSuperadmin || isProjAdmin;
+    const handleCreate = () => {
+      if (!newProjName.trim()) return;
+      const adminEmail = isProjAdmin && !isSuperadmin ? session.email : "";
+      const proj = makeProject(newProjName.trim(), adminEmail);
+      if (isProjAdmin && !isSuperadmin) proj.projAdminEmail = session.email;
+      const ns = {
+        ...appState,
+        projects: [...appState.projects, proj]
+      };
+      updApp(ns);
+      persist2(ns);
+      setNewProjName("");
+      setShowNewProj(false);
+      showToast("🏙️ " + proj.projectName + " creado");
+    };
+    const handleDelete = id => {
+      if (!confirm("¿Eliminar este proyecto permanentemente?")) return;
+      const ns = {
+        ...appState,
+        projects: appState.projects.filter(p => p.id !== id)
+      };
+      updApp(ns);
+      persist2(ns);
+      showToast("Proyecto eliminado");
+    };
+    const handleOpen = (proj, role) => {
+      setActiveProjectId(proj.id);
+      // build session role for this specific project
+      setSession(prev => ({
+        ...prev,
+        activeRole: role,
+        activeProjectId: proj.id
+      }));
+      setScreen("project");
+    };
+    const nameColor = isSuperadmin ? "#FFD700" : isProjAdmin ? "#FFD700AA" : "#4ECDC4";
+    const nameLabel = isSuperadmin ? "👑 Superadmin" : isProjAdmin ? "🏗️ Admin de Proyecto" : "🏙️ Ciudadano";
+    return /*#__PURE__*/_jsxDEV("div", {
+      style: {
+        background: "#0D1117",
+        minHeight: "100vh",
+        color: "#E8EDF2",
+        fontFamily: "Inter,sans-serif"
+      },
+      children: [/*#__PURE__*/_jsxDEV("div", {
+        style: {
+          background: "#004949",
+          borderBottom: "1px solid #006060",
+          padding: "0 20px",
+          height: 50,
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          position: "sticky",
+          top: 0,
+          zIndex: 50
+        },
+        children: [/*#__PURE__*/_jsxDEV("img", {
+          src: LOGO_B64,
+          alt: "Mandú",
+          style: {
+            height: 30,
+            flexShrink: 0,
+            opacity: .95
+          }
+        }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+          style: {
+            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            gap: 8
+          },
+          children: [/*#__PURE__*/_jsxDEV("span", {
+            style: {
+              fontSize: 12,
+              color: "#d4f0e8",
+              fontWeight: 600
+            },
+            children: [session.emoji, " ", session.name]
+          }, void 0, true), /*#__PURE__*/_jsxDEV("span", {
+            style: {
+              fontSize: 6,
+              color: nameColor,
+              fontFamily: "'Press Start 2P',monospace"
+            },
+            children: nameLabel
+          }, void 0, false)]
+        }, void 0, true), /*#__PURE__*/_jsxDEV("button", {
+          onClick: () => setDayMode(d => !d),
+          title: dayMode ? "Modo noche" : "Modo día",
+          style: {
+            background: "rgba(0,0,0,0.2)",
+            border: "1px solid #006060",
+            color: dayMode ? "#FFE066" : "#7dc9b2",
+            fontSize: 16,
+            padding: "3px 9px",
+            cursor: "pointer",
+            lineHeight: 1.3
+          },
+          children: dayMode ? "🌙" : "☀️"
+        }, void 0, false), canCreate && /*#__PURE__*/_jsxDEV("button", {
+          onClick: () => setShowNewProj(s => !s),
+          style: {
+            background: "#7dc9b2",
+            color: "#004949",
+            border: "none",
+            fontFamily: "'Press Start 2P',monospace",
+            fontSize: 7,
+            padding: "6px 14px",
+            cursor: "pointer",
+            flexShrink: 0
+          },
+          children: "+ NUEVO PROYECTO"
+        }, void 0, false), /*#__PURE__*/_jsxDEV("button", {
+          onClick: () => {
+            setSession(null);
+            setScreen("login");
+            setLoginStep("email");
+            setLoginEmail("");
+            setLoginPin("");
+          },
+          style: {
+            background: "none",
+            border: "1px solid #006060",
+            color: "rgba(255,255,255,0.55)",
+            fontFamily: "'Press Start 2P',monospace",
+            fontSize: 6,
+            padding: "5px 10px",
+            cursor: "pointer",
+            flexShrink: 0
+          },
+          children: "SALIR"
+        }, void 0, false)]
+      }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+        style: {
+          background: "#080C12",
+          borderBottom: "1px solid #1E2D40"
+        },
+        children: /*#__PURE__*/_jsxDEV("div", {
+          style: {
+            maxWidth: 1100,
+            margin: "0 auto",
+            padding: "0 20px",
+            display: "flex"
+          },
+          children: [{
+            id: "projects",
+            label: "🏙 MIS CIUDADES"
+          }, {
+            id: "export",
+            label: "📊 EXPORTAR"
+          }].map(t => /*#__PURE__*/_jsxDEV("button", {
+            onClick: () => setDashTab(t.id),
+            style: {
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: "10px 16px",
+              color: dashTab === t.id ? "#4ECDC4" : "#7A8FA6",
+              borderBottom: dashTab === t.id ? "2px solid #4ECDC4" : "2px solid transparent",
+              fontFamily: "'Press Start 2P',monospace",
+              fontSize: 7
+            },
+            children: t.label
+          }, t.id, false))
+        }, void 0, false)
+      }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+        style: {
+          maxWidth: 1100,
+          margin: "0 auto",
+          padding: 20
+        },
+        children: [dashTab === "projects" && /*#__PURE__*/_jsxDEV(_Fragment, {
+          children: [showNewProj && canCreate && /*#__PURE__*/_jsxDEV("div", {
+            style: {
+              background: "#1A2332",
+              border: "1px solid #FFD70066",
+              padding: 16,
+              marginBottom: 20
+            },
+            children: [/*#__PURE__*/_jsxDEV("div", {
+              style: {
+                fontFamily: "'Press Start 2P',monospace",
+                fontSize: 8,
+                color: "#FFD700",
+                marginBottom: 12
+              },
+              children: "▸ NUEVA CIUDAD / PROYECTO"
+            }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+              style: {
+                display: "flex",
+                gap: 10,
+                flexWrap: "wrap"
+              },
+              children: [/*#__PURE__*/_jsxDEV("input", {
+                autoFocus: true,
+                style: {
+                  background: "#0D1117",
+                  border: "1px solid #2A3F58",
+                  color: "#E8EDF2",
+                  padding: "9px 12px",
+                  fontSize: 13,
+                  fontFamily: "Inter",
+                  outline: "none",
+                  flex: 1,
+                  minWidth: 200
+                },
+                placeholder: "Nombre del proyecto…",
+                value: newProjName,
+                onChange: e => setNewProjName(e.target.value),
+                onKeyDown: e => e.key === "Enter" && handleCreate()
+              }, void 0, false), /*#__PURE__*/_jsxDEV("button", {
+                onClick: handleCreate,
+                style: {
+                  background: "#FFD700",
+                  color: "#0D1117",
+                  border: "none",
+                  fontFamily: "'Press Start 2P',monospace",
+                  fontSize: 7,
+                  padding: "9px 16px",
+                  cursor: "pointer"
+                },
+                children: "CREAR"
+              }, void 0, false), /*#__PURE__*/_jsxDEV("button", {
+                onClick: () => {
+                  setShowNewProj(false);
+                  setNewProjName("");
+                },
+                style: {
+                  background: "transparent",
+                  color: "#7A8FA6",
+                  border: "1px solid #2A3F58",
+                  fontFamily: "'Press Start 2P',monospace",
+                  fontSize: 7,
+                  padding: "9px 14px",
+                  cursor: "pointer"
+                },
+                children: "CANCELAR"
+              }, void 0, false)]
+            }, void 0, true)]
+          }, void 0, true), myProjects.length === 0 ? /*#__PURE__*/_jsxDEV("div", {
+            style: {
+              background: "#1A2332",
+              border: "1px dashed #2A3F58",
+              padding: 48,
+              textAlign: "center"
+            },
+            children: [/*#__PURE__*/_jsxDEV("div", {
+              style: px2({
+                fontSize: 8,
+                color: "#2A3F58",
+                marginBottom: 12
+              }),
+              children: "SIN PROYECTOS ASIGNADOS"
+            }, void 0, false), canCreate && /*#__PURE__*/_jsxDEV("button", {
+              onClick: () => setShowNewProj(true),
+              style: {
+                background: "#FFD700",
+                color: "#0D1117",
+                border: "none",
+                fontFamily: "'Press Start 2P',monospace",
+                fontSize: 8,
+                padding: "10px 20px",
+                cursor: "pointer"
+              },
+              children: "+ CREAR PRIMER PROYECTO"
+            }, void 0, false), !canCreate && /*#__PURE__*/_jsxDEV("div", {
+              style: {
+                fontSize: 12,
+                color: "#2A3F58"
+              },
+              children: "Contactá al administrador para que te asigne a un proyecto."
+            }, void 0, false)]
+          }, void 0, true) : /*#__PURE__*/_jsxDEV("div", {
+            style: {
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))",
+              gap: 16
+            },
+            children: myProjects.map(({
+              proj,
+              role
+            }) => /*#__PURE__*/_jsxDEV(ProjectCard, {
+              proj: proj,
+              role: role,
+              onOpen: () => handleOpen(proj, role),
+              onPrint: () => {
+                setPrintProjectId(proj.id);
+                setScreen("print");
+              },
+              onDelete: () => handleDelete(proj.id),
+              canDelete: isSuperadmin || role === "projadmin" && proj.projAdminEmail === session.email
+            }, proj.id, false))
+          }, void 0, false)]
+        }, void 0, true), dashTab === "export" && (() => {
+          const rows = myProjects.map(({
+            proj: p,
+            role: r
+          }) => {
+            const am2 = p.modules.filter(m => m.active);
+            const allActive = am2.flatMap(m => m.tasks);
+            const doneTasks2 = allActive.filter(t => t.done).length;
+            const totalTasks2 = allActive.length;
+            const overdueTasks = allActive.filter(t => isOverdue(t)).length;
+            const doneModules = am2.filter(m => m.tasks.length > 0 && m.tasks.every(t => t.done)).length;
+            const allDueDates2 = p.modules.flatMap(m => m.tasks.filter(t => t.dueDate).map(t => t.dueDate)).sort();
+            const firstD = p.projStart || (allDueDates2.length ? allDueDates2[0] : null);
+            const lastD = allDueDates2.length ? allDueDates2[allDueDates2.length - 1] : p.projEnd || null;
+            const possXP2 = am2.reduce((a, m) => a + m.tasks.reduce((b, t) => b + t.xp, 0), 0);
+            const earnedXP = am2.reduce((a, m) => a + m.tasks.filter(t => t.done).reduce((b, t) => b + t.xp, 0), 0);
+            const pct2 = possXP2 > 0 ? Math.round(earnedXP / possXP2 * 100) : 0;
+            // Hours
+            const allHours = allActive.flatMap(t => t.hoursLog || []);
+            const hoursAdmin = allHours.filter(h => h.authorRole === "admin").reduce((a, h) => a + h.hours, 0);
+            const hoursTeam = allHours.filter(h => h.authorRole === "team").reduce((a, h) => a + h.hours, 0);
+            return {
+              p,
+              r,
+              firstD,
+              lastD,
+              am2,
+              doneModules,
+              doneTasks2,
+              totalTasks2,
+              overdueTasks,
+              pct2,
+              earnedXP,
+              hoursAdmin,
+              hoursTeam
+            };
+          });
+          const downloadCSV = () => {
+            const h = ["Proyecto", "Rol", "Fecha Inicio", "Fecha Fin", "Módulos Activos", "Módulos Completados", "Tareas Totales", "Tareas Realizadas", "Tareas Vencidas", "Hs Admin", "Hs Cliente", "% Avance"];
+            const body = rows.map(({
+              p,
+              r,
+              firstD,
+              lastD,
+              am2,
+              doneModules,
+              doneTasks2,
+              totalTasks2,
+              overdueTasks,
+              pct2,
+              hoursAdmin,
+              hoursTeam
+            }) => [`"${p.projectName || p.name}"`, r, firstD ? fmtD(firstD) : "—", lastD ? fmtD(lastD) : "—", am2.length, doneModules, totalTasks2, doneTasks2, overdueTasks, hoursAdmin, hoursTeam, pct2 + "%"].join(","));
+            const blob = new Blob(["\uFEFF", [h.join(","), ...body].join("\n")], {
+              type: "text/csv;charset=utf-8"
+            });
+            const u = URL.createObjectURL(blob),
+              a = document.createElement("a");
+            a.href = u;
+            a.download = `TalentCity-${new Date().toISOString().slice(0, 10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(u);
+          };
+          const th = {
+            padding: "9px 12px",
+            textAlign: "left",
+            fontSize: 10,
+            color: "#7A8FA6",
+            fontWeight: 600,
+            borderBottom: "1px solid #2A3F58",
+            whiteSpace: "nowrap",
+            background: "#080C12"
+          };
+          const td = {
+            padding: "9px 12px",
+            fontSize: 12,
+            borderBottom: "1px solid #1A2332",
+            verticalAlign: "middle"
+          };
+          const totM = rows.reduce((a, r) => a + r.am2.length, 0);
+          const totMD = rows.reduce((a, r) => a + r.doneModules, 0);
+          const totT = rows.reduce((a, r) => a + r.totalTasks2, 0);
+          const totD = rows.reduce((a, r) => a + r.doneTasks2, 0);
+          const totO = rows.reduce((a, r) => a + r.overdueTasks, 0);
+          const totHA = rows.reduce((a, r) => a + r.hoursAdmin, 0);
+          const totHT = rows.reduce((a, r) => a + r.hoursTeam, 0);
+          return /*#__PURE__*/_jsxDEV("div", {
+            children: [/*#__PURE__*/_jsxDEV("div", {
+              style: {
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                marginBottom: 16,
+                flexWrap: "wrap"
+              },
+              children: [/*#__PURE__*/_jsxDEV("div", {
+                style: {
+                  flex: 1
+                },
+                children: [/*#__PURE__*/_jsxDEV("div", {
+                  style: px2({
+                    fontSize: 7,
+                    color: "#4ECDC4",
+                    marginBottom: 4
+                  }),
+                  children: "▸ PLANILLA DE PROYECTOS"
+                }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+                  style: {
+                    fontSize: 12,
+                    color: "#7A8FA6"
+                  },
+                  children: [rows.length, " proyecto", rows.length !== 1 ? "s" : " ", " · Exportá como CSV para abrir en Excel / Google Sheets"]
+                }, void 0, true)]
+              }, void 0, true), /*#__PURE__*/_jsxDEV("button", {
+                onClick: downloadCSV,
+                style: {
+                  background: "#4ECDC4",
+                  color: "#0D1117",
+                  border: "none",
+                  fontFamily: "'Press Start 2P',monospace",
+                  fontSize: 7,
+                  padding: "8px 16px",
+                  cursor: "pointer",
+                  flexShrink: 0
+                },
+                children: "↓ DESCARGAR CSV"
+              }, void 0, false)]
+            }, void 0, true), rows.length === 0 ? /*#__PURE__*/_jsxDEV("div", {
+              style: {
+                background: "#1A2332",
+                border: "1px dashed #2A3F58",
+                padding: 32,
+                textAlign: "center",
+                color: "#2A3F58",
+                fontSize: 12
+              },
+              children: "Sin proyectos para exportar."
+            }, void 0, false) : /*#__PURE__*/_jsxDEV("div", {
+              style: {
+                overflowX: "auto"
+              },
+              children: /*#__PURE__*/_jsxDEV("table", {
+                style: {
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  background: "#0D1117",
+                  border: "1px solid #2A3F58",
+                  minWidth: 900
+                },
+                children: [/*#__PURE__*/_jsxDEV("thead", {
+                  children: /*#__PURE__*/_jsxDEV("tr", {
+                    children: ["PROYECTO", "FECHA INICIO", "FECHA FIN", "MÓDULOS", "MOD. COMPL.", "TAREAS", "REALIZADAS", "VENCIDAS", "HS ADMIN", "HS CLIENTE", "AVANCE"].map(h2 => /*#__PURE__*/_jsxDEV("th", {
+                      style: th,
+                      children: h2
+                    }, h2, false))
+                  }, void 0, false)
+                }, void 0, false), /*#__PURE__*/_jsxDEV("tbody", {
+                  children: rows.map(({
+                    p,
+                    r,
+                    firstD,
+                    lastD,
+                    am2,
+                    doneModules,
+                    doneTasks2,
+                    totalTasks2,
+                    overdueTasks,
+                    pct2,
+                    hoursAdmin,
+                    hoursTeam
+                  }, i) => {
+                    const rc = r === "superadmin" || r === "projadmin" ? "#FFD70099" : "#4ECDC499";
+                    const lastLate = lastD && parseD(lastD) < TODAY && doneTasks2 < totalTasks2;
+                    return /*#__PURE__*/_jsxDEV("tr", {
+                      style: {
+                        background: i % 2 === 0 ? "#0D1117" : "#0F1822"
+                      },
+                      children: [/*#__PURE__*/_jsxDEV("td", {
+                        style: {
+                          ...td,
+                          maxWidth: 180
+                        },
+                        children: [/*#__PURE__*/_jsxDEV("div", {
+                          style: {
+                            fontWeight: 600,
+                            color: "#E8EDF2",
+                            marginBottom: 2,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap"
+                          },
+                          children: p.projectName || p.name
+                        }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+                          style: {
+                            fontSize: 8,
+                            color: rc,
+                            fontFamily: "'Press Start 2P',monospace"
+                          },
+                          children: r === "superadmin" ? "👑 SUPER" : r === "projadmin" ? "🏗️ ADMIN" : "🏙️ CIUDADANO"
+                        }, void 0, false)]
+                      }, void 0, true), /*#__PURE__*/_jsxDEV("td", {
+                        style: {
+                          ...td,
+                          color: "#7A8FA6",
+                          whiteSpace: "nowrap"
+                        },
+                        children: firstD ? fmtD(firstD) : /*#__PURE__*/_jsxDEV("span", {
+                          style: {
+                            color: "#2A3F58"
+                          },
+                          children: "—"
+                        }, void 0, false)
+                      }, void 0, false), /*#__PURE__*/_jsxDEV("td", {
+                        style: {
+                          ...td,
+                          whiteSpace: "nowrap",
+                          color: lastLate ? "#FF4757" : "#7A8FA6"
+                        },
+                        children: lastD ? fmtD(lastD) + (lastLate ? " ⚠" : "") : /*#__PURE__*/_jsxDEV("span", {
+                          style: {
+                            color: "#2A3F58"
+                          },
+                          children: "—"
+                        }, void 0, false)
+                      }, void 0, false), /*#__PURE__*/_jsxDEV("td", {
+                        style: {
+                          ...td,
+                          textAlign: "center",
+                          color: "#4ECDC4",
+                          fontWeight: 600
+                        },
+                        children: am2.length
+                      }, void 0, false), /*#__PURE__*/_jsxDEV("td", {
+                        style: {
+                          ...td,
+                          textAlign: "center",
+                          color: doneModules === am2.length && am2.length > 0 ? "#A8E6CF" : "#7A8FA6",
+                          fontWeight: doneModules === am2.length && am2.length > 0 ? 700 : 400
+                        },
+                        children: [doneModules, "/", am2.length]
+                      }, void 0, true), /*#__PURE__*/_jsxDEV("td", {
+                        style: {
+                          ...td,
+                          textAlign: "center",
+                          color: "#7A8FA6"
+                        },
+                        children: totalTasks2
+                      }, void 0, false), /*#__PURE__*/_jsxDEV("td", {
+                        style: {
+                          ...td,
+                          textAlign: "center",
+                          color: doneTasks2 === totalTasks2 && totalTasks2 > 0 ? "#A8E6CF" : "#E8EDF2",
+                          fontWeight: 600
+                        },
+                        children: doneTasks2
+                      }, void 0, false), /*#__PURE__*/_jsxDEV("td", {
+                        style: {
+                          ...td,
+                          textAlign: "center"
+                        },
+                        children: overdueTasks > 0 ? /*#__PURE__*/_jsxDEV("span", {
+                          style: {
+                            color: "#FF4757",
+                            fontFamily: "'Press Start 2P',monospace",
+                            fontSize: 9
+                          },
+                          children: ["⚠ ", overdueTasks]
+                        }, void 0, true) : /*#__PURE__*/_jsxDEV("span", {
+                          style: {
+                            color: "#A8E6CF",
+                            fontSize: 11
+                          },
+                          children: "✓ 0"
+                        }, void 0, false)
+                      }, void 0, false), /*#__PURE__*/_jsxDEV("td", {
+                        style: {
+                          ...td,
+                          textAlign: "center",
+                          color: hoursAdmin > 0 ? "#FFD700" : "#2A3F58",
+                          fontWeight: hoursAdmin > 0 ? 600 : 400
+                        },
+                        children: hoursAdmin > 0 ? `${hoursAdmin}h` : "—"
+                      }, void 0, false), /*#__PURE__*/_jsxDEV("td", {
+                        style: {
+                          ...td,
+                          textAlign: "center",
+                          color: hoursTeam > 0 ? "#4ECDC4" : "#2A3F58",
+                          fontWeight: hoursTeam > 0 ? 600 : 400
+                        },
+                        children: hoursTeam > 0 ? `${hoursTeam}h` : "—"
+                      }, void 0, false), /*#__PURE__*/_jsxDEV("td", {
+                        style: {
+                          ...td,
+                          minWidth: 110
+                        },
+                        children: /*#__PURE__*/_jsxDEV("div", {
+                          style: {
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6
+                          },
+                          children: [/*#__PURE__*/_jsxDEV("div", {
+                            style: {
+                              flex: 1,
+                              height: 6,
+                              background: "#1A2332",
+                              overflow: "hidden"
+                            },
+                            children: /*#__PURE__*/_jsxDEV("div", {
+                              style: {
+                                height: "100%",
+                                width: `${pct2}%`,
+                                background: pct2 === 100 ? "#A8E6CF" : pct2 > 60 ? "#4ECDC4" : "#FFD700"
+                              }
+                            }, void 0, false)
+                          }, void 0, false), /*#__PURE__*/_jsxDEV("span", {
+                            style: {
+                              fontSize: 10,
+                              fontWeight: 700,
+                              color: pct2 === 100 ? "#A8E6CF" : pct2 > 60 ? "#4ECDC4" : "#FFD700",
+                              minWidth: 32,
+                              textAlign: "right"
+                            },
+                            children: [pct2, "%"]
+                          }, void 0, true)]
+                        }, void 0, true)
+                      }, void 0, false)]
+                    }, p.id, true);
+                  })
+                }, void 0, false), /*#__PURE__*/_jsxDEV("tfoot", {
+                  children: /*#__PURE__*/_jsxDEV("tr", {
+                    style: {
+                      background: "#1A2332",
+                      borderTop: "2px solid #2A3F58"
+                    },
+                    children: [/*#__PURE__*/_jsxDEV("td", {
+                      style: {
+                        ...td,
+                        fontWeight: 700,
+                        color: "#7A8FA6",
+                        fontSize: 10
+                      },
+                      colSpan: 3,
+                      children: ["TOTALES (", rows.length, " proyectos)"]
+                    }, void 0, true), /*#__PURE__*/_jsxDEV("td", {
+                      style: {
+                        ...td,
+                        textAlign: "center",
+                        fontWeight: 700,
+                        color: "#4ECDC4"
+                      },
+                      children: totM
+                    }, void 0, false), /*#__PURE__*/_jsxDEV("td", {
+                      style: {
+                        ...td,
+                        textAlign: "center",
+                        fontWeight: 700,
+                        color: "#7A8FA6"
+                      },
+                      children: [totMD, "/", totM]
+                    }, void 0, true), /*#__PURE__*/_jsxDEV("td", {
+                      style: {
+                        ...td,
+                        textAlign: "center",
+                        fontWeight: 700,
+                        color: "#7A8FA6"
+                      },
+                      children: totT
+                    }, void 0, false), /*#__PURE__*/_jsxDEV("td", {
+                      style: {
+                        ...td,
+                        textAlign: "center",
+                        fontWeight: 700,
+                        color: "#A8E6CF"
+                      },
+                      children: totD
+                    }, void 0, false), /*#__PURE__*/_jsxDEV("td", {
+                      style: {
+                        ...td,
+                        textAlign: "center",
+                        fontWeight: 700,
+                        color: totO > 0 ? "#FF4757" : "#A8E6CF"
+                      },
+                      children: totO > 0 ? `⚠ ${totO}` : "✓ 0"
+                    }, void 0, false), /*#__PURE__*/_jsxDEV("td", {
+                      style: {
+                        ...td,
+                        textAlign: "center",
+                        fontWeight: 700,
+                        color: totHA > 0 ? "#FFD700" : "#2A3F58"
+                      },
+                      children: totHA > 0 ? `${totHA}h` : "—"
+                    }, void 0, false), /*#__PURE__*/_jsxDEV("td", {
+                      style: {
+                        ...td,
+                        textAlign: "center",
+                        fontWeight: 700,
+                        color: totHT > 0 ? "#4ECDC4" : "#2A3F58"
+                      },
+                      children: totHT > 0 ? `${totHT}h` : "—"
+                    }, void 0, false), /*#__PURE__*/_jsxDEV("td", {
+                      style: td
+                    }, void 0, false)]
+                  }, void 0, true)
+                }, void 0, false)]
+              }, void 0, true)
+            }, void 0, false)]
+          }, void 0, true);
+        })()]
+      }, void 0, true)]
+    }, void 0, true);
+  };
+
+  // ── ROUTING ────────────────────────────────────────────────────────────────
+  const activeProject = appState.projects.find(p => p.id === activeProjectId);
+  const updateProject = updatedProj => {
+    const ns = {
+      ...appState,
+      projects: appState.projects.map(p => p.id === updatedProj.id ? updatedProj : p)
+    };
+    updApp(ns);
+    persist2(ns);
+  };
+  if (screen === "login") return /*#__PURE__*/_jsxDEV(_Fragment, {
+    children: [/*#__PURE__*/_jsxDEV(LoginScreen, {}, void 0, false), ToastEl]
+  }, void 0, true);
+  if (screen === "dashboard") return /*#__PURE__*/_jsxDEV(_Fragment, {
+    children: [/*#__PURE__*/_jsxDEV(Dashboard, {}, void 0, false), ToastEl]
+  }, void 0, true);
+  if (screen === "print") {
+    const pj = appState.projects.find(p => p.id === printProjectId);
+    if (!pj) return /*#__PURE__*/_jsxDEV(_Fragment, {
+      children: ToastEl
+    }, void 0, false);
+    return /*#__PURE__*/_jsxDEV(_Fragment, {
+      children: [/*#__PURE__*/_jsxDEV(PrintReport, {
+        proj: pj,
+        onClose: () => setScreen("dashboard")
+      }, void 0, false), ToastEl]
+    }, void 0, true);
+  }
+  if (screen === "project" && activeProject) {
+    const activeRole = session.activeRole || "team";
+    const isAdminRole = activeRole === "superadmin" || activeRole === "projadmin";
+    const teamMember = activeRole === "team" ? activeProject.team.find(m => m.email === session.email) : null;
+    const projSession = {
+      ...session,
+      role: isAdminRole ? "admin" : "team",
+      id: teamMember?.id || session.email,
+      name: teamMember?.name || session.name,
+      emoji: teamMember?.emoji || session.emoji
+    };
+    return /*#__PURE__*/_jsxDEV(_Fragment, {
+      children: [/*#__PURE__*/_jsxDEV(ProjectApp, {
+        proj: activeProject,
+        session: projSession,
+        allProjects: appState.projects,
+        appState: appState,
+        onUpdate: updateProject,
+        onBack: () => setScreen("dashboard"),
+        onPrint: () => {
+          setPrintProjectId(activeProjectId);
+          setScreen("print");
+        },
+        onSwitchProject: id => setActiveProjectId(id),
+        showToast: showToast,
+        dayMode: dayMode,
+        setDayMode: setDayMode
+      }, void 0, false), ToastEl]
+    }, void 0, true);
+  }
+  return /*#__PURE__*/_jsxDEV(_Fragment, {
+    children: [/*#__PURE__*/_jsxDEV(LoginScreen, {}, void 0, false), ToastEl]
+  }, void 0, true);
+}
+function ProjectApp({
+  proj,
+  session,
+  allProjects,
+  appState,
+  onUpdate,
+  onBack,
+  onPrint,
+  onSwitchProject,
+  showToast,
+  dayMode,
+  setDayMode
+}) {
+  const isAdmin = session.role === "admin" || session.role === "projadmin";
+  const [view, setView] = useState("ciudad");
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState(null);
+  const [toast, setToast] = useState(null);
+  const [taskModal, setTaskModal] = useState(null);
+  const [emailModal, setEmailModal] = useState(null);
+  const [emailTo, setEmailTo] = useState([]);
+  const [emailSubject, setEmailSubject] = useState("");
+  const [minuteText, setMinuteText] = useState("");
+  const [selEmoji, setSelEmoji] = useState(0);
+  const [addingMember, setAddingMember] = useState(false);
+  const [newMember, setNewMember] = useState({
+    name: "",
+    role: "",
+    emoji: "👩‍💻",
+    skills: "",
+    status: "active",
+    email: "",
+    pin: "1234"
+  });
+  const [confirmDel, setConfirmDel] = useState(null);
+  const [addingTask, setAddingTask] = useState(null);
+  const [newTask, setNewTask] = useState({
+    label: "",
+    startDate: "",
+    duration: "",
+    dueDate: ""
+  });
+  const [editingName, setEditingName] = useState(false);
+  const [expandedMinutes, setExpandedMinutes] = useState({});
+  const [addingMod, setAddingMod] = useState(false);
+  const [newMod, setNewMod] = useState({
+    name: "",
+    buildingType: "onboarding",
+    color: "#4ECDC4"
+  });
+  const [editingMod, setEditingMod] = useState(null);
+  const [cityImg, setCityImg] = useState(null);
+
+  // S is an alias for proj so all the inner code works unchanged
+  const S = proj;
+  const upd = ns => onUpdate(ns);
+  const save = useCallback(async ns => {
+    setSaving(true);
+    const target = ns || proj;
+    onUpdate(target); // update React state in parent
+    // persist directly — don't go through persist2 to avoid double-toast
+    try {
+      const fullState = {
+        ...appState,
+        projects: appState.projects.map(p => p.id === target.id ? target : p)
+      };
+      await saveAll(fullState);
+    } catch (e) {/* silent */}
+    setSaving(false);
+    setSavedAt(new Date());
+  }, [proj, onUpdate, appState]);
+  // Local toast for ProjectApp (toast var always defined in scope)
+  const localShowToast = (msg, type = "ok") => {
+    setToast({
+      msg,
+      type
+    });
+    setTimeout(() => setToast(null), 2800);
+  };
+  const _showToast = localShowToast;
+
+  // city image for print
+  useEffect(() => {
+    if (!S) return;
+    const cv = document.createElement("canvas");
+    cv.width = 960;
+    cv.height = 220;
+    const ctx = cv.getContext("2d");
+    const W = 960,
+      H = 220;
+    function fr(x, y, w, h, c) {
+      ctx.fillStyle = c;
+      ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
+    }
+    function pct(m) {
+      return m.tasks.length ? m.tasks.filter(t => t.done).length / m.tasks.length : 0;
+    }
+    const sky = ctx.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0, "#04080F");
+    sky.addColorStop(.65, "#0D1117");
+    sky.addColorStop(1, "#0F1922");
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = "#FFF5C0";
+    ctx.beginPath();
+    ctx.arc(W - 80, 32, 19, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#0A1018";
+    ctx.beginPath();
+    ctx.arc(W - 71, 28, 15, 0, Math.PI * 2);
+    ctx.fill();
+    const ground = H - 28;
+    ctx.fillStyle = "#0D1520";
+    ctx.fillRect(0, ground, W, H - ground);
+    ctx.fillStyle = "#111C28";
+    ctx.fillRect(0, ground, W, 14);
+    ctx.fillStyle = "#FFD70033";
+    for (let i = 0; i < W; i += 52) ctx.fillRect(i, ground + 6, 24, 2);
+    ctx.fillStyle = "#1A2840";
+    ctx.fillRect(0, ground - 2, W, 2);
+    function dTent(x, g, col, p) {
+      const s = p === 0 ? 0 : p < .25 ? 1 : p < .5 ? 2 : p < .75 ? 3 : p < 1 ? 4 : 5;
+      if (!s) return;
+      const cx = x + 40;
+      if (s >= 2) {
+        ctx.fillStyle = col + "44";
+        ctx.beginPath();
+        ctx.moveTo(cx, g - 55);
+        ctx.lineTo(x + 5, g - 5);
+        ctx.lineTo(x + 75, g - 5);
+        ctx.closePath();
+        ctx.fill();
+      }
+      if (s >= 3) {
+        ctx.fillStyle = col + "88";
+        ctx.beginPath();
+        ctx.moveTo(cx, g - 58);
+        ctx.lineTo(x + 8, g - 6);
+        ctx.lineTo(x + 72, g - 6);
+        ctx.closePath();
+        ctx.fill();
+      }
+      if (s >= 4) {
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        ctx.moveTo(cx, g - 62);
+        ctx.lineTo(x + 6, g - 6);
+        ctx.lineTo(x + 74, g - 6);
+        ctx.closePath();
+        ctx.fill();
+        fr(cx - 1, g - 68, 2, 8, "#E8EDF2");
+        fr(cx - 3, g - 70, 6, 4, col);
+      }
+      if (s === 5) {
+        fr(cx, g - 78, 12, 8, "#FF6B35");
+      }
+    }
+    function dHouse(x, g, col, p) {
+      const s = p === 0 ? 0 : p < .25 ? 1 : p < .5 ? 2 : p < .75 ? 3 : p < 1 ? 4 : 5;
+      if (!s) return;
+      if (s >= 1) fr(x + 5, g - 12, 70, 12, "#1A2840");
+      if (s >= 3) {
+        fr(x + 8, g - 50, 64, 38, col + "77");
+        ctx.fillStyle = col + "66";
+        ctx.beginPath();
+        ctx.moveTo(x + 3, g - 50);
+        ctx.lineTo(x + 40, g - 80);
+        ctx.lineTo(x + 77, g - 50);
+        ctx.closePath();
+        ctx.fill();
+      }
+      if (s === 5) {
+        fr(x + 8, g - 52, 64, 40, col);
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        ctx.moveTo(x + 2, g - 52);
+        ctx.lineTo(x + 40, g - 86);
+        ctx.lineTo(x + 78, g - 52);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+    function dSchool(x, g, col, p) {
+      const s = p === 0 ? 0 : p < .25 ? 1 : p < .5 ? 2 : p < .75 ? 3 : p < 1 ? 4 : 5;
+      if (!s) return;
+      if (s >= 3) fr(x + 5, g - 60, 70, 46, col + "66");
+      if (s === 5) {
+        fr(x + 5, g - 64, 70, 50, col);
+        fr(x + 36, g - 90, 8, 8, col);
+      }
+    }
+    function dOffice(x, g, col, p) {
+      const s = p === 0 ? 0 : p < .25 ? 1 : p < .5 ? 2 : p < .75 ? 3 : p < 1 ? 4 : 5;
+      if (!s) return;
+      if (s >= 2) fr(x + 8, g - 75, 64, 59, col + "22");
+      if (s >= 3) fr(x + 8, g - 75, 64, 59, col + "55");
+      if (s >= 4) fr(x + 8, g - 78, 64, 62, col + "99");
+      if (s === 5) {
+        fr(x + 8, g - 80, 64, 64, col);
+        fr(x + 38, g - 98, 4, 8, "#E8EDF2");
+      }
+    }
+    function dLib(x, g, col, p) {
+      const s = p === 0 ? 0 : p < .25 ? 1 : p < .5 ? 2 : p < .75 ? 3 : p < 1 ? 4 : 5;
+      if (!s) return;
+      if (s >= 3) {
+        fr(x + 6, g - 62, 68, 48, col + "66");
+        ctx.fillStyle = col + "33";
+        ctx.beginPath();
+        ctx.arc(x + 40, g - 62, 34, Math.PI, 0);
+        ctx.fill();
+      }
+      if (s === 5) {
+        fr(x + 6, g - 66, 68, 52, col);
+      }
+    }
+    function dPark(x, g, col, p) {
+      const s = p === 0 ? 0 : p < .25 ? 1 : p < .5 ? 2 : p < .75 ? 3 : p < 1 ? 4 : 5;
+      if (!s) return;
+      if (s >= 3) {
+        [[x + 12, g - 70], [x + 55, g - 68]].forEach(([tx, ty]) => {
+          fr(tx + 4, ty + 40, 4, 30, col + "AA");
+          ctx.fillStyle = col + "77";
+          ctx.beginPath();
+          ctx.arc(tx + 6, ty + 20, 16, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
+      if (s === 5) {
+        [[x + 12, g - 74], [x + 55, g - 72]].forEach(([tx, ty]) => {
+          fr(tx + 4, ty + 44, 4, 30, "#5C3A1E");
+          ctx.fillStyle = col;
+          ctx.beginPath();
+          ctx.arc(tx + 6, ty + 20, 20, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        ctx.arc(x + 40, g - 20, 10, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    function dPalace(x, g, col, p) {
+      const s = p === 0 ? 0 : p < .25 ? 1 : p < .5 ? 2 : p < .75 ? 3 : p < 1 ? 4 : 5;
+      if (!s) return;
+      if (s >= 3) fr(x + 6, g - 72, 68, 54, col + "66");
+      if (s >= 4) {
+        fr(x + 6, g - 74, 68, 56, col + "99");
+        [x + 8, x + 18, x + 54, x + 64].forEach(cx2 => fr(cx2, g - 74, 8, 56, col + "BB"));
+      }
+      if (s === 5) {
+        fr(x + 6, g - 76, 68, 60, col);
+        fr(x + 28, g - 106, 24, 32, col);
+        fr(x + 36, g - 114, 8, 10, "#E8EDF2");
+      }
+    }
+    function dPlaza(x, g, col, p) {
+      const s = p === 0 ? 0 : p < .25 ? 1 : p < .5 ? 2 : p < .75 ? 3 : p < 1 ? 4 : 5;
+      if (!s) return;
+      if (s >= 4) {
+        [x + 10, x + 30, x + 50, x + 65].forEach(px2 => fr(px2, g - 58, 8, 34, col + "AA"));
+        fr(x + 3, g - 60, 74, 6, col);
+      }
+      if (s === 5) {
+        [x + 10, x + 30, x + 50, x + 65].forEach(px2 => fr(px2, g - 62, 8, 36, col));
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        ctx.arc(x + 40, g - 50, 9, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    const DFN2 = {
+      onboarding: dTent,
+      carrera: dHouse,
+      capacitacion: dSchool,
+      evaluacion: dOffice,
+      mentorias: dLib,
+      bienestar: dPark,
+      sucesion: dPalace,
+      feedback: dPlaza
+    };
+    const am2 = S.modules.filter(m => m.active);
+    if (am2.length > 0) {
+      const margin = 14,
+        slotW = Math.floor((W - margin * 2) / am2.length);
+      am2.forEach((mod, i) => {
+        const p = pct(mod),
+          bx = margin + i * slotW + Math.floor((slotW - 80) / 2);
+        const fn = DFN2[mod.buildingType || mod.id] || dOffice;
+        fn(bx, ground, mod.color, p);
+        ctx.font = "bold 10px monospace";
+        ctx.fillStyle = mod.color;
+        ctx.textAlign = "center";
+        ctx.fillText(Math.round(p * 100) + "%", bx + 40, ground + 14);
+        ctx.font = "9px monospace";
+        ctx.fillStyle = mod.color + "AA";
+        ctx.fillText(mod.name.length > 10 ? mod.name.slice(0, 9) + "…" : mod.name, bx + 40, ground + 25);
+      });
+    }
+    setCityImg(cv.toDataURL("image/png"));
+  }, [S?.modules]);
+  const px = s => ({
+    fontFamily: "'Press Start 2P',monospace",
+    ...s
+  });
+  const aMods = S.modules.filter(m => m.active);
+  const totalXP = S.modules.reduce((a, m) => a + m.tasks.filter(t => t.done).reduce((b, t) => b + t.xp, 0), 0);
+  const possXP = aMods.reduce((a, m) => a + m.tasks.reduce((b, t) => b + t.xp, 0), 0);
+  const cityPct = possXP > 0 ? Math.round(totalXP / possXP * 100) : 0;
+  const doneTasks = S.modules.reduce((a, m) => a + m.tasks.filter(t => t.done).length, 0);
+  const pendingTasks = S.modules.reduce((a, m) => a + (m.active ? m.tasks.filter(t => !t.done).length : 0), 0);
+  const allOverdue = S.modules.flatMap(m => m.active ? m.tasks.filter(t => isOverdue(t)).map(t => ({
+    ...t,
+    modName: m.name,
+    modColor: m.color
+  })) : []);
+
+  // projects this team member can see
+  const myProjects = isAdmin ? allProjects : allProjects.filter(p => p.team.some(m => m.email === session.email));
+  const D = dayMode ? {
+    app: "#f0f7f4",
+    nav: "#004949",
+    navBorder: "#006060",
+    panel: "#ffffff",
+    panelBorder: "#c8e6dc",
+    card: "#f8fdfa",
+    cardBorder: "#c8e6dc",
+    text: "#0a2a20",
+    textSub: "#2a6e5a",
+    textMuted: "#5a9a86",
+    inp: "#ffffff",
+    inpBorder: "#6aaa90",
+    accent: "#004949",
+    accentText: "#ffffff",
+    tabActive: "#004949",
+    tabActiveBorder: "#004949",
+    xBarBg: "#c8e6dc"
+  } : {
+    app: "#002b2b",
+    nav: "#001a1a",
+    navBorder: "#004949",
+    panel: "#003030",
+    panelBorder: "#005050",
+    card: "#003838",
+    cardBorder: "#004949",
+    text: "#d4f0e8",
+    textSub: "#7dc9b2",
+    textMuted: "#4a8a76",
+    inp: "#001a1a",
+    inpBorder: "#004949",
+    accent: "#7dc9b2",
+    accentText: "#001a1a",
+    tabActive: "#7dc9b2",
+    tabActiveBorder: "#7dc9b2",
+    xBarBg: "#001a1a"
+  };
+
+  // Pass theme into C styles
+  const C = {
+    app: {
+      background: D.app,
+      minHeight: "100vh",
+      color: D.text,
+      fontFamily: "Inter,sans-serif",
+      fontSize: 14
+    },
+    nav: {
+      background: D.nav,
+      borderBottom: `1px solid ${D.navBorder}`,
+      padding: "0 14px",
+      display: "flex",
+      alignItems: "center",
+      height: 46,
+      position: "sticky",
+      top: 0,
+      zIndex: 50,
+      overflowX: "auto"
+    },
+    panel: {
+      background: D.panel,
+      border: `1px solid ${D.panelBorder}`,
+      padding: 14
+    },
+    card: {
+      background: D.card,
+      border: `1px solid ${D.cardBorder}`,
+      padding: 12
+    },
+    inp: {
+      background: D.inp,
+      border: `1px solid ${D.inpBorder}`,
+      color: D.text,
+      padding: "7px 9px",
+      fontSize: 12,
+      fontFamily: "Inter,sans-serif",
+      outline: "none",
+      width: "100%"
+    },
+    dateInp: {
+      background: D.inp,
+      border: `1px solid ${D.inpBorder}`,
+      color: D.text,
+      padding: "4px 6px",
+      fontSize: 11,
+      fontFamily: "Inter,sans-serif",
+      outline: "none"
+    },
+    nb: a => ({
+      background: "none",
+      border: "none",
+      cursor: "pointer",
+      padding: "0 9px",
+      height: 46,
+      fontSize: 11,
+      fontWeight: 600,
+      color: a ? D.accentText : "rgba(255,255,255,0.6)",
+      borderBottom: a ? `2px solid ${D.accentText}` : "2px solid transparent"
+    }),
+    btn: v => {
+      const m = {
+        p: {
+          background: D.accent,
+          color: D.accentText,
+          border: "none"
+        },
+        t: {
+          background: "transparent",
+          color: D.accent,
+          border: `1px solid ${D.accent}`
+        },
+        g: {
+          background: "transparent",
+          color: D.textMuted,
+          border: `1px solid ${D.cardBorder}`
+        },
+        d: {
+          background: "transparent",
+          color: "#FF4757",
+          border: "1px solid #FF475744"
+        }
+      };
+      return {
+        ...m[v],
+        fontFamily: "'Press Start 2P',monospace",
+        fontSize: 6,
+        padding: "6px 11px",
+        cursor: "pointer"
+      };
+    },
+    xBar: {
+      height: 5,
+      background: D.xBarBg,
+      overflow: "hidden"
+    },
+    xFill: (p, c) => ({
+      height: "100%",
+      width: `${p}%`,
+      background: c || D.accent,
+      transition: "width .5s"
+    }),
+    oBadge: {
+      display: "inline-flex",
+      alignItems: "center",
+      background: "#FF475722",
+      border: "1px solid #FF475766",
+      color: "#FF4757",
+      fontFamily: "'Press Start 2P',monospace",
+      fontSize: 5,
+      padding: "2px 5px"
+    },
+    sBadge: {
+      display: "inline-flex",
+      alignItems: "center",
+      background: "#FFD70022",
+      border: "1px solid #FFD70066",
+      color: "#FFD700",
+      fontFamily: "'Press Start 2P',monospace",
+      fontSize: 5,
+      padding: "2px 5px"
+    }
+  };
+  const openTask = (task, mod) => setTaskModal({
+    task,
+    mod
+  });
+  const updateTask = (modId, updatedTask) => {
+    const ns = {
+      ...S,
+      modules: S.modules.map(m => m.id === modId ? {
+        ...m,
+        tasks: m.tasks.map(t => t.id === updatedTask.id ? updatedTask : t)
+      } : m)
+    };
+    upd(ns);
+    setTaskModal(prev => prev ? {
+      ...prev,
+      task: updatedTask
+    } : null);
+  };
+  const openEmailModal = (task, mod) => {
+    setEmailModal({
+      task,
+      mod
+    });
+    setEmailTo(S.team.filter(m => m.email).map(m => m.id));
+    setEmailSubject(`[${S.projectName}] ${mod.name} — ${task.label}`);
+    setMinuteText("");
+  };
+  const registerMinute = () => {
+    if (!minuteText.trim()) {
+      _showToast("Escribí algo en la minuta", "error");
+      return;
+    }
+    const recipients = S.team.filter(m => emailTo.includes(m.id));
+    const minute = {
+      id: "m" + Date.now(),
+      text: minuteText.trim(),
+      ts: Date.now(),
+      sentTo: recipients.length ? recipients.map(m => m.name).join(", ") : "Sin destinatarios",
+      author: S.adminName || "Admin",
+      subject: emailSubject,
+      seenBy: []
+    };
+    const ns = {
+      ...S,
+      modules: S.modules.map(m => m.id === emailModal.mod.id ? {
+        ...m,
+        tasks: m.tasks.map(t => t.id === emailModal.task.id ? {
+          ...t,
+          minutes: [...(t.minutes || []), minute]
+        } : t)
+      } : m)
+    };
+    upd(ns);
+    save(ns);
+    _showToast("📋 Minuta registrada");
+    setEmailModal(null);
+  };
+  const BUILDING_TYPES = [{
+    id: "onboarding",
+    label: "⛺ Campamento",
+    phase: "Campamento Base"
+  }, {
+    id: "carrera",
+    label: "🏠 Casa",
+    phase: "Barrio Residencial"
+  }, {
+    id: "capacitacion",
+    label: "🏫 Escuela",
+    phase: "Distrito Educativo"
+  }, {
+    id: "evaluacion",
+    label: "🏢 Oficina",
+    phase: "Centro Comercial"
+  }, {
+    id: "mentorias",
+    label: "📚 Biblioteca",
+    phase: "Biblioteca"
+  }, {
+    id: "bienestar",
+    label: "🌳 Parque",
+    phase: "Parque Central"
+  }, {
+    id: "sucesion",
+    label: "🏛️ Palacio",
+    phase: "Palacio Municipal"
+  }, {
+    id: "feedback",
+    label: "💬 Plaza",
+    phase: "Plaza Pública"
+  }];
+  const MOD_COLORS = ["#4ECDC4", "#FFD700", "#C77DFF", "#FF6B35", "#A8E6CF", "#52B788", "#4488FF", "#FF4757"];
+  const adminTabs = [{
+    id: "ciudad",
+    label: "🏙 CIUDAD"
+  }, {
+    id: "equipo",
+    label: "👥 EQUIPO"
+  }, {
+    id: "modulos",
+    label: "🏗 MÓDULOS"
+  }, {
+    id: "gantt",
+    label: "📊 GANTT"
+  }, {
+    id: "imprimir",
+    label: "🖨 IMPRIMIR"
+  }, {
+    id: "config",
+    label: "⚙ CONFIG"
+  }];
+  const teamTabs = [{
+    id: "ciudad",
+    label: "🏙 CIUDAD"
+  }, {
+    id: "tareas",
+    label: "📋 MIS TAREAS"
+  }, {
+    id: "gantt",
+    label: "📊 GANTT"
+  }, {
+    id: "imprimir",
+    label: "🖨 IMPRIMIR"
+  }];
+  const tabs = isAdmin ? adminTabs : teamTabs;
+
+  // ── EMAIL MODAL ──────────────────────────────────────────────────────────────
+  const EmailModal = () => {
+    if (!emailModal) return null;
+    const {
+      task,
+      mod
+    } = emailModal;
+    return /*#__PURE__*/_jsxDEV("div", {
+      style: {
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: "rgba(0,0,0,0.88)",
+        zIndex: 400,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16
+      },
+      children: /*#__PURE__*/_jsxDEV("div", {
+        style: {
+          background: "#0D1117",
+          border: "1px solid #4ECDC4",
+          maxWidth: 560,
+          width: "100%",
+          maxHeight: "90vh",
+          overflow: "auto"
+        },
+        children: [/*#__PURE__*/_jsxDEV("div", {
+          style: {
+            background: "#080C12",
+            padding: "12px 16px",
+            borderBottom: "1px solid #1E2D40",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center"
+          },
+          children: [/*#__PURE__*/_jsxDEV("div", {
+            style: px({
+              fontSize: 8,
+              color: "#4ECDC4"
+            }),
+            children: "📋 REGISTRAR MINUTA"
+          }, void 0, false), /*#__PURE__*/_jsxDEV("button", {
+            onClick: () => setEmailModal(null),
+            style: {
+              background: "none",
+              border: "none",
+              color: "#7A8FA6",
+              cursor: "pointer",
+              fontSize: 20,
+              lineHeight: 1
+            },
+            children: "×"
+          }, void 0, false)]
+        }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+          style: {
+            padding: 16
+          },
+          children: [/*#__PURE__*/_jsxDEV("div", {
+            style: {
+              background: "#1A2332",
+              border: `1px solid ${mod.color}44`,
+              padding: 11,
+              marginBottom: 12,
+              display: "flex",
+              alignItems: "center",
+              gap: 9
+            },
+            children: [/*#__PURE__*/_jsxDEV("span", {
+              style: {
+                fontSize: 20
+              },
+              children: mod.icon
+            }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+              children: [/*#__PURE__*/_jsxDEV("div", {
+                style: {
+                  fontWeight: 600,
+                  fontSize: 13
+                },
+                children: task.label
+              }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+                style: {
+                  fontSize: 11,
+                  color: "#7A8FA6"
+                },
+                children: [mod.name, task.dueDate ? " · " + fmtD(task.dueDate) : ""]
+              }, void 0, true)]
+            }, void 0, true)]
+          }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+            style: {
+              marginBottom: 10
+            },
+            children: [/*#__PURE__*/_jsxDEV("div", {
+              style: {
+                fontSize: 11,
+                color: "#7A8FA6",
+                marginBottom: 4
+              },
+              children: "REGISTRADO POR"
+            }, void 0, false), /*#__PURE__*/_jsxDEV("input", {
+              style: {
+                ...C.inp,
+                width: "60%"
+              },
+              value: S.adminName || "",
+              onChange: e => upd({
+                ...S,
+                adminName: e.target.value
+              })
+            }, void 0, false)]
+          }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+            style: {
+              marginBottom: 10
+            },
+            children: [/*#__PURE__*/_jsxDEV("div", {
+              style: {
+                fontSize: 11,
+                color: "#7A8FA6",
+                marginBottom: 5
+              },
+              children: "DESTINATARIOS"
+            }, void 0, false), S.team.map(m => /*#__PURE__*/_jsxDEV("div", {
+              onClick: () => setEmailTo(prev => prev.includes(m.id) ? prev.filter(x => x !== m.id) : [...prev, m.id]),
+              style: {
+                display: "flex",
+                alignItems: "center",
+                gap: 7,
+                padding: "5px 8px",
+                background: emailTo.includes(m.id) ? "#1A2332" : "transparent",
+                border: `1px solid ${emailTo.includes(m.id) ? "#2A3F58" : "transparent"}`,
+                cursor: "pointer",
+                marginBottom: 3
+              },
+              children: [/*#__PURE__*/_jsxDEV("input", {
+                type: "checkbox",
+                checked: emailTo.includes(m.id),
+                onChange: () => {},
+                style: {
+                  accentColor: "#4ECDC4",
+                  width: 12,
+                  height: 12,
+                  cursor: "pointer"
+                }
+              }, void 0, false), /*#__PURE__*/_jsxDEV("span", {
+                style: {
+                  fontSize: 14
+                },
+                children: m.emoji
+              }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+                style: {
+                  flex: 1
+                },
+                children: [/*#__PURE__*/_jsxDEV("div", {
+                  style: {
+                    fontSize: 12,
+                    fontWeight: 600
+                  },
+                  children: m.name
+                }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+                  style: {
+                    fontSize: 10,
+                    color: m.email ? "#7A8FA6" : "#FF475788"
+                  },
+                  children: m.email || "sin email"
+                }, void 0, false)]
+              }, void 0, true)]
+            }, m.id, true))]
+          }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+            style: {
+              marginBottom: 10
+            },
+            children: [/*#__PURE__*/_jsxDEV("div", {
+              style: {
+                fontSize: 11,
+                color: "#7A8FA6",
+                marginBottom: 4
+              },
+              children: "ASUNTO"
+            }, void 0, false), /*#__PURE__*/_jsxDEV("input", {
+              style: C.inp,
+              value: emailSubject,
+              onChange: e => setEmailSubject(e.target.value)
+            }, void 0, false)]
+          }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+            style: {
+              marginBottom: 12
+            },
+            children: [/*#__PURE__*/_jsxDEV("div", {
+              style: {
+                fontSize: 11,
+                color: "#7A8FA6",
+                marginBottom: 4
+              },
+              children: ["MINUTA ", /*#__PURE__*/_jsxDEV("span", {
+                style: {
+                  color: "#FF4757"
+                },
+                children: "*"
+              }, void 0, false)]
+            }, void 0, true), /*#__PURE__*/_jsxDEV("textarea", {
+              autoFocus: true,
+              value: minuteText,
+              onChange: e => setMinuteText(e.target.value),
+              placeholder: "Puntos tratados:\n- ...\n\nDecisiones:\n- ...\n\nPróximos pasos:\n- ...",
+              style: {
+                ...C.inp,
+                minHeight: 100,
+                resize: "vertical",
+                lineHeight: 1.7,
+                padding: "9px 11px"
+              }
+            }, void 0, false)]
+          }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+            style: {
+              background: "#0A1018",
+              border: "1px solid #1E2D40",
+              borderLeft: "3px solid #4ECDC4",
+              padding: "8px 12px",
+              marginBottom: 12,
+              fontSize: 11,
+              color: "#7A8FA6",
+              lineHeight: 1.7
+            },
+            children: ["La minuta queda guardada en el historial de la tarea. El equipo puede marcarla como vista.", S.team.filter(m => emailTo.includes(m.id) && m.email).length > 0 && S.adminEmail && /*#__PURE__*/_jsxDEV("span", {
+              children: " · Podés abrirla en Gmail."
+            }, void 0, false)]
+          }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+            style: {
+              display: "flex",
+              gap: 7,
+              justifyContent: "flex-end",
+              flexWrap: "wrap"
+            },
+            children: [/*#__PURE__*/_jsxDEV("button", {
+              style: C.btn("g"),
+              onClick: () => setEmailModal(null),
+              children: "CANCELAR"
+            }, void 0, false), S.team.filter(m => emailTo.includes(m.id) && m.email).length > 0 && S.adminEmail && /*#__PURE__*/_jsxDEV("button", {
+              style: {
+                ...C.btn("g"),
+                color: "#A8E6CF",
+                borderColor: "#A8E6CF44"
+              },
+              onClick: () => {
+                const to = encodeURIComponent(S.team.filter(m => emailTo.includes(m.id) && m.email).map(m => m.email).join(","));
+                const su = encodeURIComponent(emailSubject);
+                const bo = encodeURIComponent(`Tarea: ${task.label}\nMódulo: ${mod.name}\n\n--- MINUTA ---\n${minuteText}`);
+                window.open(`https://mail.google.com/mail/?view=cm&to=${to}&su=${su}&body=${bo}`, "_blank");
+              },
+              children: "↗ ABRIR EN GMAIL"
+            }, void 0, false), /*#__PURE__*/_jsxDEV("button", {
+              style: {
+                ...C.btn("t"),
+                background: "#4ECDC422",
+                ...(!minuteText.trim() ? {
+                  opacity: .4
+                } : {})
+              },
+              onClick: registerMinute,
+              children: "📋 REGISTRAR"
+            }, void 0, false)]
+          }, void 0, true)]
+        }, void 0, true)]
+      }, void 0, true)
+    }, void 0, false);
+  };
+
+  // ── CIUDAD ─────────────────────────────────────────────────────────────────
+  const CiudadView = () => /*#__PURE__*/_jsxDEV("div", {
+    style: {
+      padding: 14
+    },
+    children: [/*#__PURE__*/_jsxDEV("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        marginBottom: 12,
+        flexWrap: "wrap"
+      },
+      children: [isAdmin && editingName ? /*#__PURE__*/_jsxDEV("input", {
+        autoFocus: true,
+        style: {
+          ...C.inp,
+          ...px({}),
+          width: 190,
+          fontSize: 8
+        },
+        value: S.projectName,
+        onChange: e => upd({
+          ...S,
+          projectName: e.target.value
+        }),
+        onBlur: () => {
+          setEditingName(false);
+          save(S);
+        },
+        onKeyDown: e => e.key === "Enter" && e.target.blur()
+      }, void 0, false) : /*#__PURE__*/_jsxDEV("div", {
+        onClick: () => isAdmin && setEditingName(true),
+        style: px({
+          fontSize: 10,
+          color: "#FFD700",
+          cursor: isAdmin ? "pointer" : "default"
+        }),
+        children: ["🏙️ ", S.projectName]
+      }, void 0, true), savedAt && isAdmin && /*#__PURE__*/_jsxDEV("span", {
+        style: {
+          fontSize: 10,
+          color: "#2A3F5880"
+        },
+        children: [savedAt.getHours().toString().padStart(2, "0"), ":", savedAt.getMinutes().toString().padStart(2, "0")]
+      }, void 0, true), allOverdue.length > 0 && /*#__PURE__*/_jsxDEV("div", {
+        style: {
+          ...C.oBadge,
+          marginLeft: "auto"
+        },
+        children: ["⚠ ", allOverdue.length, " VENCIDA", allOverdue.length > 1 ? "S" : ""]
+      }, void 0, true), !isAdmin && /*#__PURE__*/_jsxDEV("div", {
+        style: {
+          marginLeft: "auto",
+          fontSize: 11,
+          color: "#7A8FA6",
+          display: "flex",
+          alignItems: "center",
+          gap: 5
+        },
+        children: [/*#__PURE__*/_jsxDEV("span", {
+          style: {
+            fontSize: 14
+          },
+          children: session.emoji
+        }, void 0, false), session.name]
+      }, void 0, true)]
+    }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+      style: {
+        ...C.panel,
+        padding: 0,
+        overflowX: "auto",
+        marginBottom: 12
+      },
+      children: [/*#__PURE__*/_jsxDEV(CityCanvas, {
+        modules: S.modules,
+        team: S.team,
+        dayMode: dayMode
+      }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+        style: {
+          padding: "4px 12px",
+          borderTop: "1px solid #1A2332",
+          display: "flex",
+          justifyContent: "space-between"
+        },
+        children: [/*#__PURE__*/_jsxDEV("span", {
+          style: px({
+            fontSize: 5,
+            color: "#2A3F58",
+            letterSpacing: 2
+          }),
+          children: [aMods.length, " EDIFICIOS · ", S.team.length, " CIUDADANOS"]
+        }, void 0, true), /*#__PURE__*/_jsxDEV("span", {
+          style: px({
+            fontSize: 6,
+            color: "#4ECDC4"
+          }),
+          children: ["CIUDAD AL ", cityPct, "%"]
+        }, void 0, true)]
+      }, void 0, true)]
+    }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+      style: {
+        display: "grid",
+        gridTemplateColumns: "repeat(4,1fr)",
+        gap: 9,
+        marginBottom: 12
+      },
+      children: [{
+        l: "XP Total",
+        v: totalXP.toLocaleString(),
+        c: "#FFD700"
+      }, {
+        l: "Módulos",
+        v: aMods.length,
+        c: "#4ECDC4"
+      }, {
+        l: "Pendientes",
+        v: pendingTasks,
+        c: "#FF6B35"
+      }, {
+        l: "Completadas",
+        v: doneTasks,
+        c: "#A8E6CF"
+      }].map(s => /*#__PURE__*/_jsxDEV("div", {
+        style: {
+          ...C.card,
+          textAlign: "center"
+        },
+        children: [/*#__PURE__*/_jsxDEV("div", {
+          style: px({
+            fontSize: 14,
+            color: s.c,
+            marginBottom: 4
+          }),
+          children: s.v
+        }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+          style: {
+            fontSize: 10,
+            color: D.textMuted
+          },
+          children: s.l.toUpperCase()
+        }, void 0, false)]
+      }, s.l, true))
+    }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+      style: {
+        ...C.panel,
+        marginBottom: 12
+      },
+      children: [/*#__PURE__*/_jsxDEV("div", {
+        style: px({
+          fontSize: 7,
+          color: "#4ECDC4",
+          letterSpacing: 2,
+          marginBottom: 8
+        }),
+        children: "▸ AVANCE POR MÓDULO"
+      }, void 0, false), aMods.length === 0 && /*#__PURE__*/_jsxDEV("div", {
+        style: px({
+          fontSize: 7,
+          color: D.textMuted,
+          textAlign: "center",
+          padding: 12
+        }),
+        children: "ACTIVÁ MÓDULOS"
+      }, void 0, false), aMods.map(mod => {
+        const d = mod.tasks.filter(t => t.done).length,
+          tot = mod.tasks.length,
+          p = tot ? Math.round(d / tot * 100) : 0,
+          od = mod.tasks.filter(t => isOverdue(t)).length,
+          soon = mod.tasks.filter(t => isDueSoon(t)).length;
+        return /*#__PURE__*/_jsxDEV("div", {
+          style: {
+            marginBottom: 9
+          },
+          children: [/*#__PURE__*/_jsxDEV("div", {
+            style: {
+              display: "flex",
+              justifyContent: "space-between",
+              marginBottom: 3,
+              alignItems: "center"
+            },
+            children: [/*#__PURE__*/_jsxDEV("span", {
+              style: {
+                fontSize: 12,
+                color: D.text,
+                display: "flex",
+                alignItems: "center",
+                gap: 5
+              },
+              children: [mod.icon, " ", mod.name, od > 0 && /*#__PURE__*/_jsxDEV("span", {
+                style: C.oBadge,
+                children: ["⚠", od]
+              }, void 0, true), soon > 0 && !od && /*#__PURE__*/_jsxDEV("span", {
+                style: C.sBadge,
+                children: ["⏰", soon]
+              }, void 0, true)]
+            }, void 0, true), /*#__PURE__*/_jsxDEV("span", {
+              style: px({
+                fontSize: 6,
+                color: mod.color
+              }),
+              children: [d, "/", tot, " · ", p, "%"]
+            }, void 0, true)]
+          }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+            style: C.xBar,
+            children: /*#__PURE__*/_jsxDEV("div", {
+              style: C.xFill(p, mod.color)
+            }, void 0, false)
+          }, void 0, false)]
+        }, mod.id, true);
+      })]
+    }, void 0, true), isAdmin && /*#__PURE__*/_jsxDEV("button", {
+      style: C.btn("p"),
+      onClick: () => save(S),
+      children: saving ? "GUARDANDO..." : "💾 GUARDAR"
+    }, void 0, false)]
+  }, void 0, true);
+
+  // ── MIS TAREAS (team) ───────────────────────────────────────────────────────
+  const MisTareasView = () => {
+    const myMods = S.modules.filter(m => m.active);
+    const unseenCount = myMods.flatMap(m => m.tasks).flatMap(t => (t.minutes || []).filter(mn => !(mn.seenBy || []).find(x => x.id === session.id))).length;
+    return /*#__PURE__*/_jsxDEV("div", {
+      style: {
+        padding: 14
+      },
+      children: [/*#__PURE__*/_jsxDEV("div", {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          marginBottom: 12
+        },
+        children: [/*#__PURE__*/_jsxDEV("div", {
+          style: px({
+            fontSize: 8,
+            color: "#4ECDC4"
+          }),
+          children: "▸ TAREAS DEL PROYECTO"
+        }, void 0, false), unseenCount > 0 && /*#__PURE__*/_jsxDEV("div", {
+          style: {
+            background: "#FF475722",
+            border: "1px solid #FF475766",
+            color: "#FF4757",
+            fontFamily: "'Press Start 2P',monospace",
+            fontSize: 5,
+            padding: "3px 8px",
+            marginLeft: "auto"
+          },
+          children: ["📋 ", unseenCount, " SIN VER"]
+        }, void 0, true)]
+      }, void 0, true), myMods.length === 0 && /*#__PURE__*/_jsxDEV("div", {
+        style: px({
+          fontSize: 7,
+          color: "#2A3F58",
+          textAlign: "center",
+          padding: 24
+        }),
+        children: "NO HAY MÓDULOS ACTIVOS"
+      }, void 0, false), myMods.map(mod => {
+        const od = mod.tasks.filter(t => isOverdue(t)).length;
+        const unseenMins = mod.tasks.flatMap(t => (t.minutes || []).filter(mn => !(mn.seenBy || []).find(x => x.id === session.id))).length;
+        const totalComments = mod.tasks.reduce((a, t) => a + (t.comments || []).length, 0);
+        return /*#__PURE__*/_jsxDEV("div", {
+          style: {
+            ...C.panel,
+            marginBottom: 12,
+            borderColor: mod.color + "44"
+          },
+          children: [/*#__PURE__*/_jsxDEV("div", {
+            style: {
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              marginBottom: 9
+            },
+            children: [/*#__PURE__*/_jsxDEV("span", {
+              style: {
+                fontSize: 20
+              },
+              children: mod.icon
+            }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+              style: {
+                flex: 1
+              },
+              children: [/*#__PURE__*/_jsxDEV("div", {
+                style: {
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: D.text
+                },
+                children: mod.name
+              }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+                style: px({
+                  fontSize: 5,
+                  color: mod.color
+                }),
+                children: mod.phase
+              }, void 0, false)]
+            }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+              style: {
+                display: "flex",
+                gap: 5
+              },
+              children: [od > 0 && /*#__PURE__*/_jsxDEV("span", {
+                style: C.oBadge,
+                children: ["⚠", od]
+              }, void 0, true), unseenMins > 0 && /*#__PURE__*/_jsxDEV("span", {
+                style: {
+                  ...C.oBadge,
+                  background: "#4ECDC422",
+                  border: "1px solid #4ECDC466",
+                  color: "#4ECDC4"
+                },
+                children: ["📋", unseenMins]
+              }, void 0, true), totalComments > 0 && /*#__PURE__*/_jsxDEV("span", {
+                style: {
+                  ...C.oBadge,
+                  background: "#C77DFF22",
+                  border: "1px solid #C77DFF44",
+                  color: "#C77DFF"
+                },
+                children: ["💬", totalComments]
+              }, void 0, true)]
+            }, void 0, true)]
+          }, void 0, true), mod.tasks.map(t => {
+            const ov = isOverdue(t),
+              sn = isDueSoon(t),
+              cC = (t.comments || []).length,
+              mC = (t.minutes || []).length,
+              unseenM = (t.minutes || []).filter(mn => !(mn.seenBy || []).find(x => x.id === session.id)).length;
+            return /*#__PURE__*/_jsxDEV("div", {
+              onClick: () => openTask(t, mod),
+              style: {
+                background: "#0D1117",
+                borderLeft: `2px solid ${ov ? "#FF4757" : sn ? "#FFD700" : t.done ? mod.color : "#2A3F58"}`,
+                cursor: "pointer",
+                marginBottom: 2
+              },
+              onMouseEnter: e => e.currentTarget.style.background = "#1A2332",
+              onMouseLeave: e => e.currentTarget.style.background = "#0D1117",
+              children: [/*#__PURE__*/_jsxDEV("div", {
+                style: {
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 7,
+                  padding: "7px 9px 3px"
+                },
+                children: [/*#__PURE__*/_jsxDEV("span", {
+                  style: {
+                    fontSize: 13,
+                    flexShrink: 0
+                  },
+                  children: t.done ? "✅" : "⬜"
+                }, void 0, false), /*#__PURE__*/_jsxDEV("span", {
+                  style: {
+                    flex: 1,
+                    fontSize: 12,
+                    color: t.done ? D.textMuted : D.text,
+                    textDecoration: t.done ? "line-through" : "none"
+                  },
+                  children: t.label
+                }, void 0, false), ov && /*#__PURE__*/_jsxDEV("span", {
+                  style: C.oBadge,
+                  children: "⚠"
+                }, void 0, false), sn && !ov && /*#__PURE__*/_jsxDEV("span", {
+                  style: C.sBadge,
+                  children: "⏰"
+                }, void 0, false), unseenM > 0 && /*#__PURE__*/_jsxDEV("span", {
+                  style: {
+                    background: "#4ECDC422",
+                    border: "1px solid #4ECDC466",
+                    color: "#4ECDC4",
+                    fontFamily: "'Press Start 2P',monospace",
+                    fontSize: 5,
+                    padding: "2px 5px"
+                  },
+                  children: ["📋", unseenM]
+                }, void 0, true), cC > 0 && /*#__PURE__*/_jsxDEV("span", {
+                  style: {
+                    background: "#C77DFF22",
+                    border: "1px solid #C77DFF44",
+                    color: "#C77DFF",
+                    fontFamily: "'Press Start 2P',monospace",
+                    fontSize: 5,
+                    padding: "2px 5px"
+                  },
+                  children: ["💬", cC]
+                }, void 0, true), /*#__PURE__*/_jsxDEV("span", {
+                  style: {
+                    color: "#2A3F58",
+                    fontSize: 13,
+                    flexShrink: 0
+                  },
+                  children: "›"
+                }, void 0, false)]
+              }, void 0, true), (t.startDate || t.dueDate || t.duration) && /*#__PURE__*/_jsxDEV("div", {
+                style: {
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "0 9px 6px 36px",
+                  fontSize: 10,
+                  color: D.textSub
+                },
+                children: [t.startDate && /*#__PURE__*/_jsxDEV("span", {
+                  children: ["📅 ", fmtD(t.startDate)]
+                }, void 0, true), t.startDate && t.dueDate && /*#__PURE__*/_jsxDEV("span", {
+                  style: {
+                    color: "#2A3F58"
+                  },
+                  children: "→"
+                }, void 0, false), t.dueDate && /*#__PURE__*/_jsxDEV("span", {
+                  style: {
+                    color: ov ? "#FF4757" : sn ? "#FFD700" : "#7A8FA6"
+                  },
+                  children: ["🏁 ", fmtD(t.dueDate)]
+                }, void 0, true), t.duration && /*#__PURE__*/_jsxDEV("span", {
+                  style: {
+                    color: "#FFD70066",
+                    fontFamily: "'Press Start 2P',monospace",
+                    fontSize: 8
+                  },
+                  children: ["· ", t.duration, "d"]
+                }, void 0, true)]
+              }, void 0, true)]
+            }, t.id, true);
+          })]
+        }, mod.id, true);
+      })]
+    }, void 0, true);
+  };
+
+  // ── MÓDULOS (admin) ─────────────────────────────────────────────────────────
+  const ModulosView = () => {
+    const togMod = id => {
+      const ns = {
+        ...S,
+        modules: S.modules.map(m => m.id === id ? {
+          ...m,
+          active: !m.active
+        } : m)
+      };
+      upd(ns);
+      save(ns);
+    };
+    const togTask = (mId, tId) => {
+      const mod = S.modules.find(m => m.id === mId),
+        t = mod.tasks.find(x => x.id === tId);
+      t.done = !t.done;
+      if (t.done) _showToast("+" + t.xp + " XP");
+      const ns = {
+        ...S,
+        modules: [...S.modules]
+      };
+      upd(ns);
+      save(ns);
+    };
+    const remTask = (mId, tId) => {
+      const ns = {
+        ...S,
+        modules: S.modules.map(m => m.id === mId ? {
+          ...m,
+          tasks: m.tasks.filter(t => t.id !== tId)
+        } : m)
+      };
+      upd(ns);
+      save(ns);
+    };
+    const deleteMod = id => {
+      if (!confirm("¿Eliminar módulo?")) return;
+      const ns = {
+        ...S,
+        modules: S.modules.filter(m => m.id !== id)
+      };
+      upd(ns);
+      save(ns);
+    };
+    const updateModField = (id, field, val) => {
+      const ns = {
+        ...S,
+        modules: S.modules.map(m => {
+          if (m.id !== id) return m;
+          if (field === "buildingType") {
+            const bt = BUILDING_TYPES.find(b => b.id === val) || BUILDING_TYPES[0];
+            return {
+              ...m,
+              buildingType: val,
+              icon: bt.label.split(" ")[0],
+              phase: bt.phase
+            };
+          }
+          return {
+            ...m,
+            [field]: val
+          };
+        })
+      };
+      upd(ns);
+      save(ns);
+    };
+    const addNewMod = () => {
+      if (!newMod.name.trim()) return;
+      const bt = BUILDING_TYPES.find(b => b.id === newMod.buildingType) || BUILDING_TYPES[0];
+      const mod = {
+        id: "mod" + Date.now(),
+        name: newMod.name.trim(),
+        icon: bt.label.split(" ")[0],
+        buildingType: newMod.buildingType,
+        active: true,
+        color: newMod.color,
+        phase: bt.phase,
+        tasks: []
+      };
+      const ns = {
+        ...S,
+        modules: [...S.modules, mod]
+      };
+      upd(ns);
+      save(ns);
+      setAddingMod(false);
+      setNewMod({
+        name: "",
+        buildingType: "onboarding",
+        color: "#4ECDC4"
+      });
+      _showToast(mod.icon + " " + mod.name + " creado");
+    };
+
+    // task date helpers
+    const calcEndDate = (startDate, duration) => {
+      if (!startDate || !duration || isNaN(parseInt(duration, 10))) return null;
+      return addDays(startDate, parseInt(duration, 10));
+    };
+    const calcDuration = (startDate, dueDate) => {
+      if (!startDate || !dueDate) return "";
+      const d1 = parseD(startDate),
+        d2 = parseD(dueDate);
+      if (!d1 || !d2) return "";
+      const diff = Math.round((d2 - d1) / (1000 * 60 * 60 * 24));
+      return diff > 0 ? String(diff) : "";
+    };
+    const updateTaskDates = (mId, tId, field, val) => {
+      const ns = {
+        ...S,
+        modules: S.modules.map(m => m.id === mId ? {
+          ...m,
+          tasks: m.tasks.map(t => {
+            if (t.id !== tId) return t;
+            if (field === "startDate") {
+              const newEnd = calcEndDate(val, t.duration);
+              return {
+                ...t,
+                startDate: val || null,
+                dueDate: newEnd || t.dueDate
+              };
+            }
+            if (field === "duration") {
+              const dur = parseInt(val, 10);
+              const newEnd = t.startDate && dur > 0 ? calcEndDate(t.startDate, dur) : t.dueDate;
+              return {
+                ...t,
+                duration: dur > 0 ? dur : null,
+                dueDate: newEnd || t.dueDate
+              };
+            }
+            if (field === "dueDate") {
+              const newDur = calcDuration(t.startDate, val);
+              return {
+                ...t,
+                dueDate: val || null,
+                duration: newDur ? parseInt(newDur, 10) : t.duration
+              };
+            }
+            return t;
+          })
+        } : m)
+      };
+      upd(ns);
+      save(ns);
+    };
+    const doAdd = mId => {
+      if (!newTask.label.trim()) return;
+      const endDate = calcEndDate(newTask.startDate, newTask.duration) || newTask.dueDate || null;
+      const dur = newTask.duration ? parseInt(newTask.duration, 10) : null;
+      const ns = {
+        ...S,
+        modules: S.modules.map(m => m.id === mId ? {
+          ...m,
+          tasks: [...m.tasks, {
+            id: "t" + Date.now(),
+            label: newTask.label.trim(),
+            done: false,
+            xp: 80,
+            startDate: newTask.startDate || null,
+            duration: dur,
+            dueDate: endDate,
+            minutes: [],
+            comments: []
+          }]
+        } : m)
+      };
+      upd(ns);
+      save(ns);
+      setAddingTask(null);
+      setNewTask({
+        label: "",
+        startDate: "",
+        duration: "",
+        dueDate: ""
+      });
+    };
+
+    // Computed add-task end date preview
+    const previewEnd = calcEndDate(newTask.startDate, newTask.duration);
+    return /*#__PURE__*/_jsxDEV("div", {
+      style: {
+        padding: 14
+      },
+      children: [/*#__PURE__*/_jsxDEV("div", {
+        style: {
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 4,
+          flexWrap: "wrap",
+          gap: 8
+        },
+        children: [/*#__PURE__*/_jsxDEV("div", {
+          style: px({
+            fontSize: 7,
+            color: "#4ECDC4",
+            letterSpacing: 2
+          }),
+          children: "▸ MÓDULOS / EDIFICIOS"
+        }, void 0, false), /*#__PURE__*/_jsxDEV("button", {
+          style: C.btn("p"),
+          onClick: () => setAddingMod(true),
+          children: "+ NUEVO MÓDULO"
+        }, void 0, false)]
+      }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+        style: {
+          color: D.textSub,
+          fontSize: 12,
+          marginBottom: 12
+        },
+        children: "Activá módulos. Editá nombre, edificio y color con ✎."
+      }, void 0, false), addingMod && /*#__PURE__*/_jsxDEV("div", {
+        style: {
+          ...C.panel,
+          borderColor: "#FFD70066",
+          marginBottom: 12
+        },
+        children: [/*#__PURE__*/_jsxDEV("div", {
+          style: px({
+            fontSize: 7,
+            color: "#FFD700",
+            marginBottom: 10
+          }),
+          children: "▸ NUEVO MÓDULO"
+        }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+          style: {
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 9,
+            marginBottom: 9
+          },
+          children: [/*#__PURE__*/_jsxDEV("div", {
+            children: [/*#__PURE__*/_jsxDEV("div", {
+              style: {
+                fontSize: 11,
+                color: D.textSub,
+                marginBottom: 3
+              },
+              children: "NOMBRE *"
+            }, void 0, false), /*#__PURE__*/_jsxDEV("input", {
+              style: C.inp,
+              autoFocus: true,
+              placeholder: "Ej: Feedback Continuo",
+              value: newMod.name,
+              onChange: e => setNewMod({
+                ...newMod,
+                name: e.target.value
+              })
+            }, void 0, false)]
+          }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+            children: [/*#__PURE__*/_jsxDEV("div", {
+              style: {
+                fontSize: 11,
+                color: D.textSub,
+                marginBottom: 3
+              },
+              children: "EDIFICIO"
+            }, void 0, false), /*#__PURE__*/_jsxDEV("select", {
+              style: {
+                ...C.inp,
+                cursor: "pointer"
+              },
+              value: newMod.buildingType,
+              onChange: e => setNewMod({
+                ...newMod,
+                buildingType: e.target.value
+              }),
+              children: BUILDING_TYPES.map(bt => /*#__PURE__*/_jsxDEV("option", {
+                value: bt.id,
+                children: [bt.label, " — ", bt.phase]
+              }, bt.id, true))
+            }, void 0, false)]
+          }, void 0, true)]
+        }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+          style: {
+            marginBottom: 9
+          },
+          children: [/*#__PURE__*/_jsxDEV("div", {
+            style: {
+              fontSize: 11,
+              color: D.textSub,
+              marginBottom: 5
+            },
+            children: "COLOR"
+          }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+            style: {
+              display: "flex",
+              gap: 7,
+              flexWrap: "wrap"
+            },
+            children: MOD_COLORS.map(c => /*#__PURE__*/_jsxDEV("div", {
+              onClick: () => setNewMod({
+                ...newMod,
+                color: c
+              }),
+              style: {
+                width: 22,
+                height: 22,
+                background: c,
+                cursor: "pointer",
+                border: newMod.color === c ? "3px solid white" : "3px solid transparent"
+              }
+            }, c, false))
+          }, void 0, false)]
+        }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+          style: {
+            display: "flex",
+            gap: 7
+          },
+          children: [/*#__PURE__*/_jsxDEV("button", {
+            style: C.btn("p"),
+            onClick: addNewMod,
+            children: "CREAR"
+          }, void 0, false), /*#__PURE__*/_jsxDEV("button", {
+            style: C.btn("g"),
+            onClick: () => setAddingMod(false),
+            children: "CANCELAR"
+          }, void 0, false)]
+        }, void 0, true)]
+      }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+        style: {
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill,minmax(300px,1fr))",
+          gap: 12
+        },
+        children: S.modules.map(mod => {
+          const done = mod.tasks.filter(t => t.done).length,
+            tot = mod.tasks.length,
+            p = tot ? Math.round(done / tot * 100) : 0;
+          const od = mod.tasks.filter(t => isOverdue(t)).length,
+            soon = mod.tasks.filter(t => isDueSoon(t)).length;
+          const isEditingThis = editingMod === mod.id;
+          return /*#__PURE__*/_jsxDEV("div", {
+            style: {
+              ...C.card,
+              borderColor: mod.active ? mod.color + "55" : D.cardBorder,
+              opacity: mod.active ? 1 : .6
+            },
+            children: [/*#__PURE__*/_jsxDEV("div", {
+              style: {
+                display: "flex",
+                alignItems: "center",
+                gap: 7,
+                marginBottom: isEditingThis ? 9 : 8
+              },
+              children: [/*#__PURE__*/_jsxDEV("div", {
+                style: {
+                  width: 32,
+                  height: 32,
+                  background: D.app,
+                  border: `1px solid ${mod.color}33`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 17,
+                  flexShrink: 0
+                },
+                children: mod.icon
+              }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+                style: {
+                  flex: 1,
+                  minWidth: 0
+                },
+                children: [/*#__PURE__*/_jsxDEV("div", {
+                  style: {
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: D.text,
+                    marginBottom: 1,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                    flexWrap: "wrap"
+                  },
+                  children: [mod.name, od > 0 && /*#__PURE__*/_jsxDEV("span", {
+                    style: C.oBadge,
+                    children: ["⚠", od]
+                  }, void 0, true), soon > 0 && !od && /*#__PURE__*/_jsxDEV("span", {
+                    style: C.sBadge,
+                    children: ["⏰", soon]
+                  }, void 0, true)]
+                }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+                  style: px({
+                    fontSize: 5,
+                    color: mod.color
+                  }),
+                  children: mod.phase
+                }, void 0, false)]
+              }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+                style: {
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  flexShrink: 0
+                },
+                children: [/*#__PURE__*/_jsxDEV("button", {
+                  onClick: () => setEditingMod(isEditingThis ? null : mod.id),
+                  style: {
+                    background: "none",
+                    border: `1px solid ${D.cardBorder}`,
+                    color: isEditingThis ? D.accent : D.textMuted,
+                    cursor: "pointer",
+                    fontSize: 11,
+                    padding: "2px 6px",
+                    lineHeight: 1.5
+                  },
+                  children: "✎"
+                }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+                  style: {
+                    width: 26,
+                    height: 14,
+                    position: "relative",
+                    cursor: "pointer"
+                  },
+                  onClick: () => togMod(mod.id),
+                  children: [/*#__PURE__*/_jsxDEV("div", {
+                    style: {
+                      width: 26,
+                      height: 14,
+                      background: mod.active ? mod.color : D.textMuted,
+                      transition: "background .2s"
+                    }
+                  }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+                    style: {
+                      position: "absolute",
+                      top: 2,
+                      left: mod.active ? 14 : 2,
+                      width: 10,
+                      height: 10,
+                      background: mod.active ? D.app : D.textMuted,
+                      transition: "left .2s"
+                    }
+                  }, void 0, false)]
+                }, void 0, true)]
+              }, void 0, true)]
+            }, void 0, true), isEditingThis && /*#__PURE__*/_jsxDEV("div", {
+              style: {
+                background: D.app,
+                border: "1px solid #2A3F58",
+                padding: 9,
+                marginBottom: 9
+              },
+              children: [/*#__PURE__*/_jsxDEV("div", {
+                style: {
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 7,
+                  marginBottom: 7
+                },
+                children: [/*#__PURE__*/_jsxDEV("div", {
+                  children: [/*#__PURE__*/_jsxDEV("div", {
+                    style: {
+                      fontSize: 10,
+                      color: "#7A8FA6",
+                      marginBottom: 2
+                    },
+                    children: "NOMBRE"
+                  }, void 0, false), /*#__PURE__*/_jsxDEV("input", {
+                    style: {
+                      ...C.inp,
+                      fontSize: 11
+                    },
+                    value: mod.name,
+                    onChange: e => updateModField(mod.id, "name", e.target.value)
+                  }, void 0, false)]
+                }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+                  children: [/*#__PURE__*/_jsxDEV("div", {
+                    style: {
+                      fontSize: 10,
+                      color: "#7A8FA6",
+                      marginBottom: 2
+                    },
+                    children: "EDIFICIO"
+                  }, void 0, false), /*#__PURE__*/_jsxDEV("select", {
+                    style: {
+                      ...C.inp,
+                      fontSize: 11,
+                      cursor: "pointer"
+                    },
+                    value: mod.buildingType || mod.id,
+                    onChange: e => updateModField(mod.id, "buildingType", e.target.value),
+                    children: BUILDING_TYPES.map(bt => /*#__PURE__*/_jsxDEV("option", {
+                      value: bt.id,
+                      children: bt.label
+                    }, bt.id, false))
+                  }, void 0, false)]
+                }, void 0, true)]
+              }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+                style: {
+                  marginBottom: 7
+                },
+                children: [/*#__PURE__*/_jsxDEV("div", {
+                  style: {
+                    fontSize: 10,
+                    color: "#7A8FA6",
+                    marginBottom: 4
+                  },
+                  children: "COLOR"
+                }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+                  style: {
+                    display: "flex",
+                    gap: 5,
+                    flexWrap: "wrap"
+                  },
+                  children: MOD_COLORS.map(c => /*#__PURE__*/_jsxDEV("div", {
+                    onClick: () => updateModField(mod.id, "color", c),
+                    style: {
+                      width: 18,
+                      height: 18,
+                      background: c,
+                      cursor: "pointer",
+                      border: mod.color === c ? "3px solid white" : "3px solid transparent"
+                    }
+                  }, c, false))
+                }, void 0, false)]
+              }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+                style: {
+                  display: "flex",
+                  justifyContent: "flex-end"
+                },
+                children: /*#__PURE__*/_jsxDEV("button", {
+                  onClick: () => deleteMod(mod.id),
+                  style: {
+                    ...C.btn("d"),
+                    fontSize: 6,
+                    padding: "3px 9px"
+                  },
+                  children: "ELIMINAR"
+                }, void 0, false)
+              }, void 0, false)]
+            }, void 0, true), mod.active && /*#__PURE__*/_jsxDEV(_Fragment, {
+              children: [/*#__PURE__*/_jsxDEV("div", {
+                style: {
+                  display: "flex",
+                  justifyContent: "space-between",
+                  fontSize: 10,
+                  color: D.textMuted,
+                  marginBottom: 3
+                },
+                children: [/*#__PURE__*/_jsxDEV("span", {
+                  children: [done, "/", tot, " tareas"]
+                }, void 0, true), /*#__PURE__*/_jsxDEV("span", {
+                  style: px({
+                    color: mod.color,
+                    fontSize: 6
+                  }),
+                  children: [p, "%"]
+                }, void 0, true)]
+              }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+                style: C.xBar,
+                children: /*#__PURE__*/_jsxDEV("div", {
+                  style: C.xFill(p, mod.color)
+                }, void 0, false)
+              }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+                style: {
+                  marginTop: 8
+                },
+                children: [mod.tasks.map(t => {
+                  const ov = isOverdue(t),
+                    sn = isDueSoon(t),
+                    cC = (t.comments || []).length,
+                    mC = (t.minutes || []).length;
+                  const hasDates = t.startDate || t.dueDate;
+                  return /*#__PURE__*/_jsxDEV("div", {
+                    style: {
+                      marginBottom: 3,
+                      background: t.done ? D.app : "transparent",
+                      borderLeft: `2px solid ${ov ? "#FF4757" : sn ? "#FFD700" : t.done ? mod.color : D.textMuted}`
+                    },
+                    children: [/*#__PURE__*/_jsxDEV("div", {
+                      style: {
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 3,
+                        padding: "4px 4px 2px 4px"
+                      },
+                      children: [/*#__PURE__*/_jsxDEV("input", {
+                        type: "checkbox",
+                        checked: t.done,
+                        onChange: () => togTask(mod.id, t.id),
+                        style: {
+                          accentColor: mod.color,
+                          width: 11,
+                          height: 11,
+                          cursor: "pointer",
+                          flexShrink: 0
+                        }
+                      }, void 0, false), /*#__PURE__*/_jsxDEV("span", {
+                        style: {
+                          flex: 1,
+                          fontSize: 10,
+                          color: t.done ? D.textMuted : D.text,
+                          textDecoration: t.done ? "line-through" : "none"
+                        },
+                        children: t.label
+                      }, void 0, false), ov && /*#__PURE__*/_jsxDEV("span", {
+                        style: C.oBadge,
+                        children: "⚠"
+                      }, void 0, false), sn && !ov && /*#__PURE__*/_jsxDEV("span", {
+                        style: C.sBadge,
+                        children: "⏰"
+                      }, void 0, false), mC > 0 && /*#__PURE__*/_jsxDEV("button", {
+                        onClick: () => openTask(t, mod),
+                        style: {
+                          background: "#4ECDC422",
+                          border: "1px solid #4ECDC444",
+                          color: "#4ECDC4",
+                          fontFamily: "'Press Start 2P',monospace",
+                          fontSize: 5,
+                          padding: "2px 4px",
+                          cursor: "pointer"
+                        },
+                        children: ["📋", mC]
+                      }, void 0, true), cC > 0 && /*#__PURE__*/_jsxDEV("button", {
+                        onClick: () => openTask(t, mod),
+                        style: {
+                          background: "#C77DFF22",
+                          border: "1px solid #C77DFF44",
+                          color: "#C77DFF",
+                          fontFamily: "'Press Start 2P',monospace",
+                          fontSize: 5,
+                          padding: "2px 4px",
+                          cursor: "pointer"
+                        },
+                        children: ["💬", cC]
+                      }, void 0, true), /*#__PURE__*/_jsxDEV("button", {
+                        onClick: () => openEmailModal(t, mod),
+                        style: {
+                          background: "none",
+                          border: `1px solid ${D.accent}44`,
+                          color: D.accent,
+                          cursor: "pointer",
+                          fontSize: 10,
+                          padding: "1px 4px",
+                          lineHeight: 1
+                        },
+                        children: "✉"
+                      }, void 0, false), /*#__PURE__*/_jsxDEV("button", {
+                        onClick: () => remTask(mod.id, t.id),
+                        style: {
+                          background: "none",
+                          border: "none",
+                          color: D.textMuted,
+                          cursor: "pointer",
+                          fontSize: 11,
+                          padding: "0 1px",
+                          lineHeight: 1
+                        },
+                        children: "×"
+                      }, void 0, false)]
+                    }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+                      style: {
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                        padding: "2px 4px 4px 18px",
+                        flexWrap: "wrap"
+                      },
+                      children: [/*#__PURE__*/_jsxDEV("span", {
+                        style: {
+                          fontSize: 9,
+                          color: D.textSub,
+                          flexShrink: 0
+                        },
+                        children: "Inicio:"
+                      }, void 0, false), /*#__PURE__*/_jsxDEV("input", {
+                        type: "date",
+                        value: t.startDate || "",
+                        style: {
+                          ...C.dateInp,
+                          width: 100,
+                          fontSize: 10
+                        },
+                        onChange: e => updateTaskDates(mod.id, t.id, "startDate", e.target.value)
+                      }, void 0, false), /*#__PURE__*/_jsxDEV("span", {
+                        style: {
+                          fontSize: 9,
+                          color: D.textSub,
+                          flexShrink: 0
+                        },
+                        children: "Días:"
+                      }, void 0, false), /*#__PURE__*/_jsxDEV("input", {
+                        type: "number",
+                        min: "1",
+                        max: "999",
+                        value: t.duration || "",
+                        placeholder: "—",
+                        style: {
+                          ...C.dateInp,
+                          width: 44,
+                          fontSize: 10,
+                          textAlign: "center"
+                        },
+                        onChange: e => updateTaskDates(mod.id, t.id, "duration", e.target.value)
+                      }, void 0, false), /*#__PURE__*/_jsxDEV("span", {
+                        style: {
+                          fontSize: 9,
+                          color: D.textSub,
+                          flexShrink: 0
+                        },
+                        children: "Fin:"
+                      }, void 0, false), /*#__PURE__*/_jsxDEV("input", {
+                        type: "date",
+                        value: t.dueDate || "",
+                        style: {
+                          ...C.dateInp,
+                          width: 100,
+                          fontSize: 10,
+                          color: ov ? "#FF4757" : sn ? "#FFD700" : t.dueDate ? D.text : D.textMuted
+                        },
+                        onChange: e => updateTaskDates(mod.id, t.id, "dueDate", e.target.value)
+                      }, void 0, false), t.duration && /*#__PURE__*/_jsxDEV("span", {
+                        style: {
+                          fontSize: 9,
+                          color: D.accent + "99"
+                        },
+                        children: [t.duration, "d"]
+                      }, void 0, true)]
+                    }, void 0, true)]
+                  }, t.id, true);
+                }), addingTask === mod.id ? /*#__PURE__*/_jsxDEV("div", {
+                  style: {
+                    marginTop: 4,
+                    background: D.app,
+                    border: `1px solid ${D.accent}44`,
+                    padding: 8
+                  },
+                  children: [/*#__PURE__*/_jsxDEV("div", {
+                    style: {
+                      marginBottom: 6
+                    },
+                    children: /*#__PURE__*/_jsxDEV("input", {
+                      style: {
+                        ...C.inp,
+                        fontSize: 11
+                      },
+                      placeholder: "Nombre de la tarea…",
+                      value: newTask.label,
+                      onChange: e => setNewTask({
+                        ...newTask,
+                        label: e.target.value
+                      }),
+                      onKeyDown: e => e.key === "Enter" && doAdd(mod.id),
+                      autoFocus: true
+                    }, void 0, false)
+                  }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+                    style: {
+                      display: "grid",
+                      gridTemplateColumns: "1fr auto 1fr",
+                      gap: 6,
+                      alignItems: "center",
+                      marginBottom: 6
+                    },
+                    children: [/*#__PURE__*/_jsxDEV("div", {
+                      children: [/*#__PURE__*/_jsxDEV("div", {
+                        style: {
+                          fontSize: 9,
+                          color: "#7A8FA6",
+                          marginBottom: 2
+                        },
+                        children: "FECHA INICIO"
+                      }, void 0, false), /*#__PURE__*/_jsxDEV("input", {
+                        type: "date",
+                        style: {
+                          ...C.dateInp,
+                          width: "100%"
+                        },
+                        value: newTask.startDate,
+                        onChange: e => {
+                          const sd = e.target.value;
+                          const dd = calcEndDate(sd, newTask.duration);
+                          setNewTask({
+                            ...newTask,
+                            startDate: sd,
+                            dueDate: dd || newTask.dueDate
+                          });
+                        }
+                      }, void 0, false)]
+                    }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+                      style: {
+                        textAlign: "center"
+                      },
+                      children: [/*#__PURE__*/_jsxDEV("div", {
+                        style: {
+                          fontSize: 9,
+                          color: "#7A8FA6",
+                          marginBottom: 2
+                        },
+                        children: "DÍAS"
+                      }, void 0, false), /*#__PURE__*/_jsxDEV("input", {
+                        type: "number",
+                        min: "1",
+                        max: "999",
+                        placeholder: "0",
+                        style: {
+                          ...C.dateInp,
+                          width: 52,
+                          textAlign: "center"
+                        },
+                        value: newTask.duration,
+                        onChange: e => {
+                          const dur = e.target.value;
+                          const dd = calcEndDate(newTask.startDate, dur);
+                          setNewTask({
+                            ...newTask,
+                            duration: dur,
+                            dueDate: dd || newTask.dueDate
+                          });
+                        }
+                      }, void 0, false)]
+                    }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+                      children: [/*#__PURE__*/_jsxDEV("div", {
+                        style: {
+                          fontSize: 9,
+                          color: "#7A8FA6",
+                          marginBottom: 2
+                        },
+                        children: ["FECHA FIN ", previewEnd && /*#__PURE__*/_jsxDEV("span", {
+                          style: {
+                            color: "#4ECDC4"
+                          },
+                          children: "← auto"
+                        }, void 0, false)]
+                      }, void 0, true), /*#__PURE__*/_jsxDEV("input", {
+                        type: "date",
+                        style: {
+                          ...C.dateInp,
+                          width: "100%",
+                          color: previewEnd ? "#4ECDC4" : "#E8EDF2"
+                        },
+                        value: newTask.dueDate || "",
+                        onChange: e => {
+                          const dd = e.target.value;
+                          const dur = calcDuration(newTask.startDate, dd);
+                          setNewTask({
+                            ...newTask,
+                            dueDate: dd,
+                            duration: dur
+                          });
+                        }
+                      }, void 0, false)]
+                    }, void 0, true)]
+                  }, void 0, true), (newTask.startDate || newTask.dueDate) && /*#__PURE__*/_jsxDEV("div", {
+                    style: {
+                      fontSize: 10,
+                      color: "#7A8FA6",
+                      marginBottom: 6,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6
+                    },
+                    children: [newTask.startDate && /*#__PURE__*/_jsxDEV("span", {
+                      children: ["📅 ", fmtD(newTask.startDate)]
+                    }, void 0, true), newTask.startDate && newTask.dueDate && /*#__PURE__*/_jsxDEV("span", {
+                      style: {
+                        color: "#2A3F58"
+                      },
+                      children: "→"
+                    }, void 0, false), newTask.dueDate && /*#__PURE__*/_jsxDEV("span", {
+                      style: {
+                        color: "#4ECDC4"
+                      },
+                      children: ["🏁 ", fmtD(newTask.dueDate)]
+                    }, void 0, true), newTask.duration && /*#__PURE__*/_jsxDEV("span", {
+                      style: {
+                        color: "#FFD70088",
+                        fontFamily: "'Press Start 2P',monospace",
+                        fontSize: 8
+                      },
+                      children: [newTask.duration, " días"]
+                    }, void 0, true)]
+                  }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+                    style: {
+                      display: "flex",
+                      gap: 5
+                    },
+                    children: [/*#__PURE__*/_jsxDEV("button", {
+                      style: {
+                        ...C.btn("t"),
+                        flex: 1,
+                        padding: "5px"
+                      },
+                      onClick: () => doAdd(mod.id),
+                      children: "✓ AGREGAR"
+                    }, void 0, false), /*#__PURE__*/_jsxDEV("button", {
+                      style: {
+                        ...C.btn("g"),
+                        padding: "5px 10px"
+                      },
+                      onClick: () => {
+                        setAddingTask(null);
+                        setNewTask({
+                          label: "",
+                          startDate: "",
+                          duration: "",
+                          dueDate: ""
+                        });
+                      },
+                      children: "CANCELAR"
+                    }, void 0, false)]
+                  }, void 0, true)]
+                }, void 0, true) : /*#__PURE__*/_jsxDEV("button", {
+                  style: {
+                    width: "100%",
+                    background: "none",
+                    border: `1px dashed ${D.cardBorder}`,
+                    color: D.textMuted,
+                    fontSize: 11,
+                    padding: 4,
+                    cursor: "pointer",
+                    textAlign: "left",
+                    marginTop: 3
+                  },
+                  onMouseEnter: e => {
+                    e.target.style.color = mod.color;
+                    e.target.style.borderColor = mod.color;
+                  },
+                  onMouseLeave: e => {
+                    e.target.style.color = D.textMuted;
+                    e.target.style.borderColor = D.cardBorder;
+                  },
+                  onClick: () => setAddingTask(mod.id),
+                  children: "+ Agregar tarea"
+                }, void 0, false)]
+              }, void 0, true)]
+            }, void 0, true), !mod.active && /*#__PURE__*/_jsxDEV("div", {
+              style: {
+                fontSize: 11,
+                color: D.textMuted,
+                marginTop: 3
+              },
+              children: "Inactivo — activalo para incluirlo en la ciudad"
+            }, void 0, false)]
+          }, mod.id, true);
+        })
+      }, void 0, false)]
+    }, void 0, true);
+  };
+
+  // ── EQUIPO (admin) ──────────────────────────────────────────────────────────
+  const EquipoView = () => {
+    const handleAdd = () => {
+      if (!newMember.name.trim()) return;
+      const m = {
+        id: "u" + Date.now(),
+        name: newMember.name.trim(),
+        role: newMember.role.trim(),
+        emoji: EMOJIS[selEmoji],
+        level: 1,
+        xp: 0,
+        skills: newMember.skills.split(",").map(s => s.trim()).filter(Boolean),
+        status: newMember.status,
+        email: newMember.email.trim(),
+        pin: newMember.pin || "1234"
+      };
+      const ns = {
+        ...S,
+        team: [...S.team, m]
+      };
+      upd(ns);
+      save(ns);
+      setAddingMember(false);
+      setNewMember({
+        name: "",
+        role: "",
+        emoji: "👩‍💻",
+        skills: "",
+        status: "active",
+        email: "",
+        pin: "1234"
+      });
+      _showToast(m.emoji + " " + m.name + " agregado");
+    };
+    return /*#__PURE__*/_jsxDEV("div", {
+      style: {
+        padding: 14
+      },
+      children: [/*#__PURE__*/_jsxDEV("div", {
+        style: {
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 12,
+          flexWrap: "wrap",
+          gap: 8
+        },
+        children: [/*#__PURE__*/_jsxDEV("div", {
+          children: [/*#__PURE__*/_jsxDEV("div", {
+            style: px({
+              fontSize: 7,
+              color: "#4ECDC4",
+              letterSpacing: 2,
+              marginBottom: 4
+            }),
+            children: "▸ CIUDADANOS"
+          }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+            style: {
+              color: "#7A8FA6",
+              fontSize: 12
+            },
+            children: [S.team.length, " miembros · El email los vincula a este proyecto"]
+          }, void 0, true)]
+        }, void 0, true), /*#__PURE__*/_jsxDEV("button", {
+          style: C.btn("p"),
+          onClick: () => setAddingMember(true),
+          children: "+ AGREGAR"
+        }, void 0, false)]
+      }, void 0, true), addingMember && /*#__PURE__*/_jsxDEV("div", {
+        style: {
+          ...C.panel,
+          borderColor: "#4ECDC4",
+          marginBottom: 12
+        },
+        children: [/*#__PURE__*/_jsxDEV("div", {
+          style: px({
+            fontSize: 7,
+            color: "#4ECDC4",
+            marginBottom: 9
+          }),
+          children: "▸ NUEVO CIUDADANO"
+        }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+          style: {
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 8,
+            marginBottom: 8
+          },
+          children: [/*#__PURE__*/_jsxDEV("div", {
+            children: [/*#__PURE__*/_jsxDEV("div", {
+              style: {
+                fontSize: 11,
+                color: "#7A8FA6",
+                marginBottom: 3
+              },
+              children: "NOMBRE *"
+            }, void 0, false), /*#__PURE__*/_jsxDEV("input", {
+              style: C.inp,
+              placeholder: "Nombre",
+              value: newMember.name,
+              onChange: e => setNewMember({
+                ...newMember,
+                name: e.target.value
+              })
+            }, void 0, false)]
+          }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+            children: [/*#__PURE__*/_jsxDEV("div", {
+              style: {
+                fontSize: 11,
+                color: "#7A8FA6",
+                marginBottom: 3
+              },
+              children: "ROL"
+            }, void 0, false), /*#__PURE__*/_jsxDEV("input", {
+              style: C.inp,
+              placeholder: "Product Manager",
+              value: newMember.role,
+              onChange: e => setNewMember({
+                ...newMember,
+                role: e.target.value
+              })
+            }, void 0, false)]
+          }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+            children: [/*#__PURE__*/_jsxDEV("div", {
+              style: {
+                fontSize: 11,
+                color: "#7A8FA6",
+                marginBottom: 3
+              },
+              children: ["EMAIL ", /*#__PURE__*/_jsxDEV("span", {
+                style: {
+                  color: "#FF4757"
+                },
+                children: "*"
+              }, void 0, false)]
+            }, void 0, true), /*#__PURE__*/_jsxDEV("input", {
+              style: C.inp,
+              type: "email",
+              placeholder: "user@empresa.com",
+              value: newMember.email,
+              onChange: e => setNewMember({
+                ...newMember,
+                email: e.target.value
+              })
+            }, void 0, false)]
+          }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+            children: [/*#__PURE__*/_jsxDEV("div", {
+              style: {
+                fontSize: 11,
+                color: "#7A8FA6",
+                marginBottom: 3
+              },
+              children: "PIN"
+            }, void 0, false), /*#__PURE__*/_jsxDEV("input", {
+              style: C.inp,
+              maxLength: 8,
+              placeholder: "1234",
+              value: newMember.pin,
+              onChange: e => setNewMember({
+                ...newMember,
+                pin: e.target.value
+              })
+            }, void 0, false)]
+          }, void 0, true)]
+        }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+          style: {
+            marginBottom: 8
+          },
+          children: [/*#__PURE__*/_jsxDEV("div", {
+            style: {
+              fontSize: 11,
+              color: "#7A8FA6",
+              marginBottom: 4
+            },
+            children: "AVATAR"
+          }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+            style: {
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 4
+            },
+            children: EMOJIS.map((em, i) => /*#__PURE__*/_jsxDEV("div", {
+              onClick: () => setSelEmoji(i),
+              style: {
+                width: 26,
+                height: 26,
+                background: "#0D1117",
+                border: `1px solid ${selEmoji === i ? "#4ECDC4" : "#2A3F58"}`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 14,
+                cursor: "pointer"
+              },
+              children: em
+            }, i, false))
+          }, void 0, false)]
+        }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+          style: {
+            marginBottom: 8
+          },
+          children: [/*#__PURE__*/_jsxDEV("div", {
+            style: {
+              fontSize: 11,
+              color: "#7A8FA6",
+              marginBottom: 3
+            },
+            children: "HABILIDADES (coma)"
+          }, void 0, false), /*#__PURE__*/_jsxDEV("input", {
+            style: C.inp,
+            placeholder: "React, Liderazgo",
+            value: newMember.skills,
+            onChange: e => setNewMember({
+              ...newMember,
+              skills: e.target.value
+            })
+          }, void 0, false)]
+        }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+          style: {
+            display: "flex",
+            gap: 7
+          },
+          children: [/*#__PURE__*/_jsxDEV("button", {
+            style: C.btn("p"),
+            onClick: handleAdd,
+            children: "AGREGAR"
+          }, void 0, false), /*#__PURE__*/_jsxDEV("button", {
+            style: C.btn("g"),
+            onClick: () => setAddingMember(false),
+            children: "CANCELAR"
+          }, void 0, false)]
+        }, void 0, true)]
+      }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+        style: {
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill,minmax(210px,1fr))",
+          gap: 11
+        },
+        children: [S.team.map(m => {
+          const p = Math.min(100, Math.round((m.xp - (m.level - 1) * 500) / 500 * 100));
+          return /*#__PURE__*/_jsxDEV("div", {
+            style: {
+              ...C.card,
+              position: "relative"
+            },
+            children: [/*#__PURE__*/_jsxDEV("div", {
+              style: {
+                position: "absolute",
+                top: 8,
+                right: 8,
+                width: 7,
+                height: 7,
+                borderRadius: "50%",
+                background: {
+                  active: "#A8E6CF",
+                  away: "#FFD700",
+                  busy: "#FF4757"
+                }[m.status] || "#A8E6CF"
+              }
+            }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+              style: {
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                marginBottom: 8
+              },
+              children: [/*#__PURE__*/_jsxDEV("div", {
+                style: {
+                  width: 36,
+                  height: 36,
+                  background: "#0D1117",
+                  border: "1px solid #2A3F58",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 20,
+                  position: "relative",
+                  flexShrink: 0
+                },
+                children: [m.emoji, /*#__PURE__*/_jsxDEV("div", {
+                  style: px({
+                    position: "absolute",
+                    bottom: -3,
+                    right: -3,
+                    background: "#FFD700",
+                    color: "#0D1117",
+                    fontSize: 5,
+                    padding: "1px 3px"
+                  }),
+                  children: ["L", m.level]
+                }, void 0, true)]
+              }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+                children: [/*#__PURE__*/_jsxDEV("div", {
+                  style: {
+                    fontWeight: 600,
+                    fontSize: 12
+                  },
+                  children: m.name
+                }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+                  style: {
+                    fontSize: 10,
+                    color: "#7A8FA6"
+                  },
+                  children: m.role || "Sin rol"
+                }, void 0, false)]
+              }, void 0, true)]
+            }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+              style: {
+                marginBottom: 7
+              },
+              children: [/*#__PURE__*/_jsxDEV("div", {
+                style: {
+                  fontSize: 10,
+                  color: "#7A8FA6",
+                  marginBottom: 2
+                },
+                children: "EMAIL (vinculación)"
+              }, void 0, false), /*#__PURE__*/_jsxDEV("input", {
+                style: {
+                  ...C.inp,
+                  fontSize: 10
+                },
+                type: "email",
+                placeholder: "user@empresa.com",
+                value: m.email || "",
+                onChange: e => {
+                  const ns = {
+                    ...S,
+                    team: S.team.map(x => x.id === m.id ? {
+                      ...x,
+                      email: e.target.value
+                    } : x)
+                  };
+                  upd(ns);
+                  save(ns);
+                }
+              }, void 0, false)]
+            }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+              style: {
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 6,
+                marginBottom: 7
+              },
+              children: [/*#__PURE__*/_jsxDEV("div", {
+                children: [/*#__PURE__*/_jsxDEV("div", {
+                  style: {
+                    fontSize: 10,
+                    color: "#7A8FA6",
+                    marginBottom: 2
+                  },
+                  children: "PIN"
+                }, void 0, false), /*#__PURE__*/_jsxDEV("input", {
+                  style: {
+                    ...C.inp,
+                    fontSize: 10
+                  },
+                  maxLength: 8,
+                  value: m.pin || "1234",
+                  onChange: e => {
+                    const ns = {
+                      ...S,
+                      team: S.team.map(x => x.id === m.id ? {
+                        ...x,
+                        pin: e.target.value
+                      } : x)
+                    };
+                    upd(ns);
+                    save(ns);
+                  }
+                }, void 0, false)]
+              }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+                children: [/*#__PURE__*/_jsxDEV("div", {
+                  style: {
+                    fontSize: 10,
+                    color: "#7A8FA6",
+                    marginBottom: 2
+                  },
+                  children: "XP"
+                }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+                  style: px({
+                    fontSize: 10,
+                    color: "#FFD700",
+                    padding: "7px 0"
+                  }),
+                  children: m.xp.toLocaleString()
+                }, void 0, false)]
+              }, void 0, true)]
+            }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+              style: C.xBar,
+              children: /*#__PURE__*/_jsxDEV("div", {
+                style: C.xFill(p, "#4ECDC4")
+              }, void 0, false)
+            }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+              style: {
+                display: "flex",
+                gap: 5,
+                marginTop: 7
+              },
+              children: [/*#__PURE__*/_jsxDEV("button", {
+                style: {
+                  ...C.btn("g"),
+                  padding: "4px 7px"
+                },
+                onClick: () => {
+                  const ns = {
+                    ...S,
+                    team: S.team.map(x => x.id === m.id ? {
+                      ...x,
+                      xp: x.xp + 50,
+                      level: Math.max(1, Math.floor((x.xp + 50) / 500) + 1)
+                    } : x)
+                  };
+                  upd(ns);
+                  save(ns);
+                },
+                children: "+50 XP"
+              }, void 0, false), /*#__PURE__*/_jsxDEV("button", {
+                style: {
+                  ...C.btn("d"),
+                  padding: "4px 7px",
+                  marginLeft: "auto"
+                },
+                onClick: () => setConfirmDel(m.id),
+                children: "✕"
+              }, void 0, false)]
+            }, void 0, true), confirmDel === m.id && /*#__PURE__*/_jsxDEV("div", {
+              style: {
+                marginTop: 6,
+                background: "#FF475711",
+                border: "1px solid #FF475744",
+                padding: 7
+              },
+              children: [/*#__PURE__*/_jsxDEV("div", {
+                style: {
+                  fontSize: 11,
+                  color: "#FF4757",
+                  marginBottom: 4
+                },
+                children: "¿Eliminar?"
+              }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+                style: {
+                  display: "flex",
+                  gap: 5
+                },
+                children: [/*#__PURE__*/_jsxDEV("button", {
+                  style: C.btn("d"),
+                  onClick: () => {
+                    const ns = {
+                      ...S,
+                      team: S.team.filter(x => x.id !== m.id)
+                    };
+                    upd(ns);
+                    save(ns);
+                    setConfirmDel(null);
+                  },
+                  children: "ELIMINAR"
+                }, void 0, false), /*#__PURE__*/_jsxDEV("button", {
+                  style: C.btn("g"),
+                  onClick: () => setConfirmDel(null),
+                  children: "CANCELAR"
+                }, void 0, false)]
+              }, void 0, true)]
+            }, void 0, true)]
+          }, m.id, true);
+        }), S.team.length === 0 && /*#__PURE__*/_jsxDEV("div", {
+          style: {
+            ...C.card,
+            textAlign: "center",
+            padding: 32,
+            ...px({
+              fontSize: 7,
+              color: "#2A3F58"
+            })
+          },
+          children: "SIN CIUDADANOS AÚN"
+        }, void 0, false)]
+      }, void 0, true)]
+    }, void 0, true);
+  };
+
+  // ── GANTT ───────────────────────────────────────────────────────────────────
+  const GanttView = () => {
+    const od = allOverdue;
+    return /*#__PURE__*/_jsxDEV("div", {
+      style: {
+        padding: 14
+      },
+      children: [/*#__PURE__*/_jsxDEV("div", {
+        style: px({
+          fontSize: 7,
+          color: "#4ECDC4",
+          letterSpacing: 2,
+          marginBottom: 4
+        }),
+        children: "▸ DIAGRAMA GANTT"
+      }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+        style: {
+          color: "#7A8FA6",
+          fontSize: 12,
+          marginBottom: 10
+        },
+        children: "Avance real vs proyectado."
+      }, void 0, false), isAdmin && /*#__PURE__*/_jsxDEV("div", {
+        style: {
+          display: "flex",
+          gap: 12,
+          marginBottom: 10,
+          flexWrap: "wrap",
+          alignItems: "center"
+        },
+        children: [/*#__PURE__*/_jsxDEV("div", {
+          style: {
+            display: "flex",
+            alignItems: "center",
+            gap: 5,
+            fontSize: 12,
+            color: "#7A8FA6"
+          },
+          children: [/*#__PURE__*/_jsxDEV("span", {
+            children: "Inicio:"
+          }, void 0, false), /*#__PURE__*/_jsxDEV("input", {
+            type: "date",
+            style: C.dateInp,
+            value: S.projStart,
+            onChange: e => {
+              const ns = {
+                ...S,
+                projStart: e.target.value
+              };
+              upd(ns);
+              save(ns);
+            }
+          }, void 0, false)]
+        }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+          style: {
+            display: "flex",
+            alignItems: "center",
+            gap: 5,
+            fontSize: 12,
+            color: "#7A8FA6"
+          },
+          children: [/*#__PURE__*/_jsxDEV("span", {
+            children: "Fin:"
+          }, void 0, false), /*#__PURE__*/_jsxDEV("input", {
+            type: "date",
+            style: C.dateInp,
+            value: S.projEnd,
+            onChange: e => {
+              const ns = {
+                ...S,
+                projEnd: e.target.value
+              };
+              upd(ns);
+              save(ns);
+            }
+          }, void 0, false)]
+        }, void 0, true)]
+      }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+        style: {
+          ...C.panel,
+          padding: 0,
+          overflowX: "auto",
+          marginBottom: 12
+        },
+        children: /*#__PURE__*/_jsxDEV(GanttCanvas, {
+          modules: S.modules,
+          projStart: S.projStart,
+          projEnd: S.projEnd
+        }, void 0, false)
+      }, void 0, false), od.length > 0 && /*#__PURE__*/_jsxDEV("div", {
+        style: {
+          ...C.panel,
+          borderColor: "#FF475744"
+        },
+        children: [/*#__PURE__*/_jsxDEV("div", {
+          style: px({
+            fontSize: 7,
+            color: "#FF4757",
+            letterSpacing: 2,
+            marginBottom: 8
+          }),
+          children: ["⚠ VENCIDAS (", od.length, ")"]
+        }, void 0, true), od.map(t => /*#__PURE__*/_jsxDEV("div", {
+          style: {
+            display: "flex",
+            alignItems: "center",
+            gap: 7,
+            padding: "5px 7px",
+            borderLeft: "2px solid #FF4757",
+            background: "#FF475708",
+            marginBottom: 3
+          },
+          children: [/*#__PURE__*/_jsxDEV("span", {
+            style: {
+              fontSize: 11,
+              color: "#7A8FA6"
+            },
+            children: t.modName
+          }, void 0, false), /*#__PURE__*/_jsxDEV("span", {
+            style: {
+              flex: 1,
+              fontSize: 12
+            },
+            children: t.label
+          }, void 0, false), /*#__PURE__*/_jsxDEV("span", {
+            style: C.oBadge,
+            children: fmtD(t.dueDate)
+          }, void 0, false)]
+        }, t.id, true))]
+      }, void 0, true)]
+    }, void 0, true);
+  };
+
+  // ── CONFIG (admin) ──────────────────────────────────────────────────────────
+  const ConfigView = () => /*#__PURE__*/_jsxDEV("div", {
+    style: {
+      padding: 14,
+      maxWidth: 540
+    },
+    children: [/*#__PURE__*/_jsxDEV("div", {
+      style: px({
+        fontSize: 7,
+        color: "#4ECDC4",
+        letterSpacing: 2,
+        marginBottom: 12
+      }),
+      children: "▸ CONFIGURACIÓN"
+    }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+      style: {
+        ...C.panel,
+        marginBottom: 10
+      },
+      children: [/*#__PURE__*/_jsxDEV("div", {
+        style: px({
+          fontSize: 7,
+          color: "#7A8FA6",
+          marginBottom: 8
+        }),
+        children: "PROYECTO"
+      }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+        style: {
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 8,
+          marginBottom: 8
+        },
+        children: [/*#__PURE__*/_jsxDEV("div", {
+          children: [/*#__PURE__*/_jsxDEV("div", {
+            style: {
+              fontSize: 11,
+              color: "#7A8FA6",
+              marginBottom: 3
+            },
+            children: "Nombre del proyecto"
+          }, void 0, false), /*#__PURE__*/_jsxDEV("input", {
+            style: C.inp,
+            value: S.projectName,
+            onChange: e => upd({
+              ...S,
+              projectName: e.target.value
+            })
+          }, void 0, false)]
+        }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+          children: [/*#__PURE__*/_jsxDEV("div", {
+            style: {
+              fontSize: 11,
+              color: "#7A8FA6",
+              marginBottom: 3
+            },
+            children: "Nombre del admin"
+          }, void 0, false), /*#__PURE__*/_jsxDEV("input", {
+            style: C.inp,
+            value: S.adminName || "",
+            onChange: e => upd({
+              ...S,
+              adminName: e.target.value
+            })
+          }, void 0, false)]
+        }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+          children: [/*#__PURE__*/_jsxDEV("div", {
+            style: {
+              fontSize: 11,
+              color: "#7A8FA6",
+              marginBottom: 3
+            },
+            children: "Email admin"
+          }, void 0, false), /*#__PURE__*/_jsxDEV("input", {
+            style: C.inp,
+            type: "email",
+            placeholder: "admin@empresa.com",
+            value: S.adminEmail || "",
+            onChange: e => upd({
+              ...S,
+              adminEmail: e.target.value
+            })
+          }, void 0, false)]
+        }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+          children: [/*#__PURE__*/_jsxDEV("div", {
+            style: {
+              fontSize: 11,
+              color: "#7A8FA6",
+              marginBottom: 3
+            },
+            children: ["PIN Admin de Proyecto ", /*#__PURE__*/_jsxDEV("span", {
+              style: {
+                color: "#FFD700"
+              },
+              children: "🏗️"
+            }, void 0, false)]
+          }, void 0, true), /*#__PURE__*/_jsxDEV("input", {
+            style: C.inp,
+            maxLength: 8,
+            type: "password",
+            placeholder: "1111",
+            value: S.projAdminPin || "1111",
+            onChange: e => upd({
+              ...S,
+              projAdminPin: e.target.value
+            })
+          }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+            style: {
+              fontSize: 9,
+              color: "#2A3F58",
+              marginTop: 2
+            },
+            children: "PIN que usa el Admin de Proyecto al loguearse"
+          }, void 0, false)]
+        }, void 0, true)]
+      }, void 0, true), /*#__PURE__*/_jsxDEV("button", {
+        style: C.btn("p"),
+        onClick: () => save(S),
+        children: "GUARDAR"
+      }, void 0, false)]
+    }, void 0, true), session.role === "admin" && /*#__PURE__*/_jsxDEV("div", {
+      style: {
+        ...C.panel,
+        marginBottom: 10
+      },
+      children: [/*#__PURE__*/_jsxDEV("div", {
+        style: px({
+          fontSize: 7,
+          color: "#7A8FA6",
+          marginBottom: 8
+        }),
+        children: "SUPERADMIN"
+      }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+        style: {
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 8,
+          marginBottom: 8
+        },
+        children: [/*#__PURE__*/_jsxDEV("div", {
+          children: [/*#__PURE__*/_jsxDEV("div", {
+            style: {
+              fontSize: 11,
+              color: "#7A8FA6",
+              marginBottom: 3
+            },
+            children: "Nombre Superadmin"
+          }, void 0, false), /*#__PURE__*/_jsxDEV("input", {
+            style: C.inp,
+            value: appState.adminName || "",
+            onChange: e => {
+              const ns = {
+                ...appState,
+                adminName: e.target.value
+              };
+              onUpdate({
+                ...S
+              }); /* trigger save via parent */
+            }
+          }, void 0, false)]
+        }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+          children: [/*#__PURE__*/_jsxDEV("div", {
+            style: {
+              fontSize: 11,
+              color: "#7A8FA6",
+              marginBottom: 3
+            },
+            children: ["PIN Superadmin ", /*#__PURE__*/_jsxDEV("span", {
+              style: {
+                color: "#FFD700"
+              },
+              children: "👑"
+            }, void 0, false)]
+          }, void 0, true), /*#__PURE__*/_jsxDEV("input", {
+            style: C.inp,
+            maxLength: 8,
+            type: "password",
+            placeholder: "0000",
+            value: appState.adminPin || "",
+            onChange: e => {
+              const na = {
+                ...appState,
+                adminPin: e.target.value
+              }; /* superadmin PIN needs parent update — save via onUpdate trick */
+            }
+          }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+            style: {
+              fontSize: 9,
+              color: "#2A3F58",
+              marginTop: 2
+            },
+            children: "PIN del superadmin. Cambialo desde Config."
+          }, void 0, false)]
+        }, void 0, true)]
+      }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+        style: {
+          fontSize: 10,
+          color: "#7A8FA6"
+        },
+        children: "Para cambiar el PIN de superadmin, editá el valor y guardá el proyecto."
+      }, void 0, false)]
+    }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+      style: {
+        border: "1px solid #FF475744",
+        padding: 11
+      },
+      children: [/*#__PURE__*/_jsxDEV("div", {
+        style: px({
+          fontSize: 7,
+          color: "#FF4757",
+          marginBottom: 7
+        }),
+        children: "ZONA DE PELIGRO"
+      }, void 0, false), /*#__PURE__*/_jsxDEV("button", {
+        style: C.btn("d"),
+        onClick: () => {
+          if (!confirm("¿Reiniciar?")) return;
+          const ns = {
+            ...S,
+            modules: S.modules.map(m => ({
+              ...m,
+              tasks: m.tasks.map(t => ({
+                ...t,
+                done: false,
+                minutes: [],
+                comments: []
+              }))
+            })),
+            team: S.team.map(m => ({
+              ...m,
+              xp: 0,
+              level: 1
+            }))
+          };
+          upd(ns);
+          save(ns);
+          _showToast("Reiniciado");
+        },
+        children: "REINICIAR PROGRESO"
+      }, void 0, false)]
+    }, void 0, true)]
+  }, void 0, true);
+
+  // ── PRINT (reuse PrintReport) ───────────────────────────────────────────────
+  const PrintView = () => /*#__PURE__*/_jsxDEV(PrintReport, {
+    proj: S,
+    onClose: () => setView("ciudad")
+  }, void 0, false);
+
+  // ── NAV ──────────────────────────────────────────────────────────────────────
+  return /*#__PURE__*/_jsxDEV("div", {
+    style: C.app,
+    children: [/*#__PURE__*/_jsxDEV("style", {
+      children: `@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;600&display=swap');input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(.5);}textarea{font-family:Inter,sans-serif;background:#0D1117;border:1px solid #2A3F58;color:#E8EDF2;box-sizing:border-box;}`
+    }, void 0, false), view !== "imprimir" && /*#__PURE__*/_jsxDEV("nav", {
+      style: C.nav,
+      children: [/*#__PURE__*/_jsxDEV("button", {
+        onClick: onBack,
+        style: {
+          background: "none",
+          border: `1px solid ${D.navBorder}`,
+          color: "rgba(255,255,255,0.55)",
+          fontFamily: "'Press Start 2P',monospace",
+          fontSize: 5,
+          padding: "4px 8px",
+          cursor: "pointer",
+          marginRight: 10,
+          flexShrink: 0
+        },
+        children: "←"
+      }, void 0, false), /*#__PURE__*/_jsxDEV("img", {
+        src: LOGO_B64,
+        alt: "Mandú",
+        style: {
+          height: 28,
+          marginRight: 12,
+          flexShrink: 0,
+          opacity: .92
+        }
+      }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+        style: {
+          fontFamily: "'Press Start 2P',monospace",
+          fontSize: 6,
+          color: "#7dc9b2",
+          marginRight: 6,
+          whiteSpace: "nowrap",
+          flexShrink: 0,
+          overflow: "hidden",
+          maxWidth: 160,
+          textOverflow: "ellipsis"
+        },
+        children: S.projectName
+      }, void 0, false), tabs.map(t => /*#__PURE__*/_jsxDEV("button", {
+        style: C.nb(view === t.id),
+        onClick: () => setView(t.id),
+        children: t.label
+      }, t.id, false)), /*#__PURE__*/_jsxDEV("div", {
+        style: {
+          marginLeft: "auto",
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          flexShrink: 0
+        },
+        children: [/*#__PURE__*/_jsxDEV("button", {
+          onClick: () => setDayMode(d => !d),
+          title: dayMode ? "Cambiar a modo noche" : "Cambiar a modo día",
+          style: {
+            background: "rgba(0,0,0,0.2)",
+            border: `1px solid ${D.navBorder}`,
+            color: dayMode ? "#FFE066" : "#7dc9b2",
+            fontSize: 14,
+            padding: "2px 7px",
+            cursor: "pointer",
+            lineHeight: 1.4
+          },
+          children: dayMode ? "🌙" : "☀️"
+        }, void 0, false), session.emoji && /*#__PURE__*/_jsxDEV("span", {
+          style: {
+            fontSize: 14
+          },
+          children: session.emoji
+        }, void 0, false), /*#__PURE__*/_jsxDEV("span", {
+          style: {
+            fontFamily: "'Press Start 2P',monospace",
+            fontSize: 5,
+            color: session.role === "admin" ? "#FFE066" : session.role === "projadmin" ? "#c8e6a0" : "#7dc9b2"
+          },
+          children: session.role === "admin" ? "👑 SUPER" : session.role === "projadmin" ? "🏗️ ADMIN" : "CIUDADANO"
+        }, void 0, false), !isAdmin && myProjects.length > 1 && /*#__PURE__*/_jsxDEV("select", {
+          style: {
+            background: "#003030",
+            border: `1px solid ${D.navBorder}`,
+            color: "#7dc9b2",
+            fontFamily: "Inter",
+            fontSize: 10,
+            padding: "3px 6px",
+            cursor: "pointer",
+            outline: "none"
+          },
+          value: activeProjectId || "",
+          onChange: e => {
+            onSwitchProject(e.target.value);
+          },
+          children: myProjects.map(p => /*#__PURE__*/_jsxDEV("option", {
+            value: p.id,
+            children: p.projectName || p.name
+          }, p.id, false))
+        }, void 0, false), isAdmin && /*#__PURE__*/_jsxDEV("button", {
+          style: {
+            background: "none",
+            border: `1px solid ${D.navBorder}`,
+            color: "rgba(255,255,255,0.5)",
+            fontFamily: "'Press Start 2P',monospace",
+            fontSize: 5,
+            padding: "3px 8px",
+            cursor: "pointer"
+          },
+          onClick: onBack,
+          children: "PROYECTOS"
+        }, void 0, false), isAdmin && /*#__PURE__*/_jsxDEV("button", {
+          style: {
+            background: "none",
+            border: `1px solid ${D.navBorder}`,
+            color: saving ? "#7dc9b2" : "rgba(255,255,255,0.4)",
+            fontFamily: "'Press Start 2P',monospace",
+            fontSize: 5,
+            padding: "3px 7px",
+            cursor: "pointer"
+          },
+          onClick: () => save(S),
+          children: saving ? "..." : "💾"
+        }, void 0, false)]
+      }, void 0, true)]
+    }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+      style: {
+        maxWidth: 1060,
+        margin: "0 auto"
+      },
+      children: [view === "ciudad" && /*#__PURE__*/_jsxDEV(CiudadView, {}, void 0, false), view === "equipo" && isAdmin && /*#__PURE__*/_jsxDEV(EquipoView, {}, void 0, false), view === "modulos" && isAdmin && /*#__PURE__*/_jsxDEV(ModulosView, {}, void 0, false), view === "tareas" && !isAdmin && /*#__PURE__*/_jsxDEV(MisTareasView, {}, void 0, false), view === "gantt" && /*#__PURE__*/_jsxDEV(GanttView, {}, void 0, false), view === "config" && isAdmin && /*#__PURE__*/_jsxDEV(ConfigView, {}, void 0, false)]
+    }, void 0, true), view === "imprimir" && /*#__PURE__*/_jsxDEV(PrintView, {}, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+      style: {
+        position: "fixed",
+        bottom: 16,
+        right: 16,
+        zIndex: 50,
+        opacity: .55,
+        pointerEvents: "none"
+      },
+      children: /*#__PURE__*/_jsxDEV("img", {
+        src: LOGO_B64,
+        alt: "Mandú by Visma",
+        style: {
+          height: 32,
+          filter: dayMode ? "none" : "brightness(0.7) sepia(1) hue-rotate(130deg) saturate(2)"
+        }
+      }, void 0, false)
+    }, void 0, false), EmailModal(), taskModal && /*#__PURE__*/_jsxDEV(TaskModal, {
+      task: taskModal.task,
+      mod: taskModal.mod,
+      session: session,
+      adminName: S.adminName || "Admin",
+      onClose: () => setTaskModal(null),
+      onUpdate: updTask => updateTask(taskModal.mod.id, updTask)
+    }, void 0, false), toast && /*#__PURE__*/_jsxDEV("div", {
+      style: {
+        position: "fixed",
+        bottom: 18,
+        right: 18,
+        zIndex: 600,
+        background: "#1E2D40",
+        border: `1px solid ${toast.type === "error" ? "#FF4757" : "#4ECDC4"}`,
+        padding: "10px 14px",
+        maxWidth: 260,
+        animation: "slideIn .3s ease"
+      },
+      children: [/*#__PURE__*/_jsxDEV("div", {
+        style: px({
+          fontSize: 5,
+          color: toast.type === "error" ? "#FF4757" : "#4ECDC4",
+          marginBottom: 3
+        }),
+        children: toast.type === "error" ? "ERROR" : "✓ OK"
+      }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+        style: {
+          fontSize: 12
+        },
+        children: toast.msg
+      }, void 0, false)]
+    }, void 0, true), /*#__PURE__*/_jsxDEV("style", {
+      children: `@keyframes slideIn{from{transform:translateX(120%);opacity:0}to{transform:translateX(0);opacity:1}}`
+    }, void 0, false)]
+  }, void 0, true);
+}
