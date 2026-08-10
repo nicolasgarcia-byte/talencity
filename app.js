@@ -5433,12 +5433,15 @@ function ProjectApp({
             flexShrink: 0
           }
         }), React.createElement("span", {
+          onClick: () => openTask(t, mod),
           style: {
             flex: 1,
             fontSize: 10,
             color: t.done ? D.textMuted : D.text,
-            textDecoration: t.done ? "line-through" : "none"
-          }
+            textDecoration: t.done ? "line-through" : "none",
+            cursor: "pointer"
+          },
+          title: "Ver detalle / cargar horas"
         }, t.label), ov && React.createElement("span", {
           style: C.oBadge
         }, "⚠"), sn && !ov && React.createElement("span", {
