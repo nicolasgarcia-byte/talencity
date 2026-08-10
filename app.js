@@ -6621,7 +6621,7 @@ function ProjectApp({
       height: 32,
       filter: dayMode ? "none" : "brightness(0.7) sepia(1) hue-rotate(130deg) saturate(2)"
     }
-  })), EmailModal(), taskModal && React.createElement(TaskModal, {
+  })), renderEmailModal(), taskModal && React.createElement(TaskModal, {
     task: taskModal.task,
     mod: taskModal.mod,
     session: session,
