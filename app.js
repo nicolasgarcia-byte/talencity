@@ -4280,7 +4280,7 @@ function ProjectApp({
     label: "🖨 IMPRIMIR"
   }];
   const tabs = isAdmin ? adminTabs : teamTabs;
-  const EmailModal = () => {
+  const renderEmailModal = () => {
     if (!emailModal) return null;
     const {
       task,
@@ -4516,7 +4516,7 @@ function ProjectApp({
       onClick: registerMinute
     }, "📋 REGISTRAR")))));
   };
-  const CiudadView = () => React.createElement("div", {
+  const renderCiudadView = () => React.createElement("div", {
     style: {
       padding: 14
     }
@@ -4708,7 +4708,7 @@ function ProjectApp({
     style: C.btn("p"),
     onClick: () => save(S)
   }, saving ? "GUARDANDO..." : "💾 GUARDAR"));
-  const MisTareasView = () => {
+  const renderMisTareasView = () => {
     const myMods = S.modules.filter(m => m.active);
     const unseenCount = myMods.flatMap(m => m.tasks).flatMap(t => (t.minutes || []).filter(mn => !(mn.seenBy || []).find(x => x.id === session.id))).length;
     return React.createElement("div", {
@@ -4893,7 +4893,7 @@ function ProjectApp({
       }));
     }));
   };
-  const ModulosView = () => {
+  const renderModulosView = () => {
     const togMod = id => {
       const ns = {
         ...S,
@@ -6160,7 +6160,7 @@ function ProjectApp({
       }
     }, "SIN CIUDADANOS AÚN")));
   };
-  const GanttView = () => {
+  const renderGanttView = () => {
     const od = allOverdue;
     return React.createElement("div", {
       style: {
@@ -6275,7 +6275,7 @@ function ProjectApp({
       style: C.oBadge
     }, fmtD(t.dueDate))))));
   };
-  const ConfigView = () => React.createElement("div", {
+  const renderConfigView = () => React.createElement("div", {
     style: {
       padding: 14,
       maxWidth: 540
@@ -6481,7 +6481,7 @@ function ProjectApp({
       _showToast("Reiniciado");
     }
   }, "REINICIAR PROGRESO")));
-  const PrintView = () => React.createElement(PrintReport, {
+  const renderPrintView = () => React.createElement(PrintReport, {
     proj: S,
     onClose: () => setView("ciudad")
   });
@@ -6602,7 +6602,7 @@ function ProjectApp({
       maxWidth: 1060,
       margin: "0 auto"
     }
-  }, view === "ciudad" && React.createElement(CiudadView, null), view === "equipo" && isAdmin && renderEquipoView(), view === "modulos" && isAdmin && React.createElement(ModulosView, null), view === "tareas" && !isAdmin && React.createElement(MisTareasView, null), view === "gantt" && React.createElement(GanttView, null), view === "config" && isAdmin && React.createElement(ConfigView, null)), view === "imprimir" && React.createElement(PrintView, null), React.createElement("div", {
+  }, view === "ciudad" && renderCiudadView(), view === "equipo" && isAdmin && renderEquipoView(), view === "modulos" && isAdmin && renderModulosView(), view === "tareas" && !isAdmin && renderMisTareasView(), view === "gantt" && renderGanttView(), view === "config" && isAdmin && renderConfigView()), view === "imprimir" && renderPrintView(), React.createElement("div", {
     style: {
       position: "fixed",
       bottom: 16,
@@ -6650,4 +6650,4 @@ function ProjectApp({
   }, toast.msg)), React.createElement("style", null, `@keyframes slideIn{from{transform:translateX(120%);opacity:0}to{transform:translateX(0);opacity:1}}`));
 }
 window.TalentCity=TalentCity;
-})();
+})()
